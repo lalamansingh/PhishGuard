@@ -1,0 +1,837 @@
+{
+  "generated_at": "2026-10-24T18:54:49+00:00",
+  "generator": "scripts/capture_media.py",
+  "base_url": "http://localhost:5291",
+  "model_version": "2026.10.24-1812",
+  "reports": {
+    "phishing_scan_id": 70,
+    "legitimate_scan_id": 69
+  },
+  "limits": {
+    "png_max_kb": 400,
+    "mp4_max_mb": 15,
+    "gif_max_mb": 8
+  },
+  "files": [
+    {
+      "file": "overview.png",
+      "caption": "Overview dashboard: KPI cards, scan trend, verdict mix and the live feed of recent scans",
+      "group": "Dashboard",
+      "kind": "screenshot",
+      "route": "/",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1986,
+      "bytes": 227753,
+      "method": "p256",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "bulk.png",
+      "caption": "Bulk scanning: paste or upload up to 500 URLs and follow the job",
+      "group": "Scanning",
+      "kind": "screenshot",
+      "route": "/bulk",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 167748,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "scan.png",
+      "caption": "Scan page: single URL, email/SMS text (URL extraction) or QR code, with an optional deep scan",
+      "group": "Scanning",
+      "kind": "screenshot",
+      "route": "/scan",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 196377,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "history.png",
+      "caption": "Scan history: search, filters, sorting and CSV/JSON export of every scan",
+      "group": "Scanning",
+      "kind": "screenshot",
+      "route": "/history",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1860,
+      "bytes": 243356,
+      "method": "p256",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "report-legit-summary.png",
+      "caption": "Summary: risk gauge, trust tier, AI summary, score factors and every check (github.com, risk 3/100, legitimate)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/69#summary",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 2000,
+      "bytes": 210520,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 69,
+        "tab": "Summary 46"
+      }
+    },
+    {
+      "file": "report-legit-ml.png",
+      "caption": "ML Explanation: per-model probabilities and the URL features that raised or lowered the score (github.com, risk 3/100, legitimate)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/69#ml",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1730,
+      "bytes": 170823,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 69,
+        "tab": "ML Explanation"
+      }
+    },
+    {
+      "file": "report-phishing-summary.png",
+      "caption": "Summary: risk gauge, trust tier, AI summary, score factors and every check (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#summary",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 2000,
+      "bytes": 292848,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Summary 47"
+      }
+    },
+    {
+      "file": "report-phishing-ml.png",
+      "caption": "ML Explanation: per-model probabilities and the URL features that raised or lowered the score (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#ml",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1663,
+      "bytes": 173746,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "ML Explanation"
+      }
+    },
+    {
+      "file": "report-phishing-domain.png",
+      "caption": "Domain: WHOIS (registrar, age, expiry) and DNS records (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#domain",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1152,
+      "bytes": 360968,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Domain"
+      }
+    },
+    {
+      "file": "report-phishing-geo.png",
+      "caption": "Geo & Hosting: server IP location, ASN / network owner and hosting provider (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#geo",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 159019,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Geo & Hosting"
+      }
+    },
+    {
+      "file": "report-phishing-ssl.png",
+      "caption": "SSL: certificate issuer, validity window, SANs and protocol (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#ssl",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 332320,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "SSL"
+      }
+    },
+    {
+      "file": "report-phishing-http.png",
+      "caption": "HTTP: redirect chain, security headers, forms, links and scripts (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#http",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1523,
+      "bytes": 159045,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "HTTP"
+      }
+    },
+    {
+      "file": "report-phishing-reputation.png",
+      "caption": "Reputation: per-engine verdicts (local threat feeds, DNS blocklists, PhishGuard ML) plus community votes (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#reputation",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1511,
+      "bytes": 161955,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Reputation 2"
+      }
+    },
+    {
+      "file": "report-phishing-content.png",
+      "caption": "Content: page category, language and parked-domain detection, plus analytics/ad trackers (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#content",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1076,
+      "bytes": 307609,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Content"
+      }
+    },
+    {
+      "file": "report-phishing-resources.png",
+      "caption": "Resources: contacted domains and every script, style, image, frame and form (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#resources",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 348847,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Resources 4"
+      }
+    },
+    {
+      "file": "report-phishing-source.png",
+      "caption": "Source: stored HTML of the page with line numbers and search (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#source",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1324,
+      "bytes": 174969,
+      "method": "p256",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Source"
+      }
+    },
+    {
+      "file": "report-phishing-graph.png",
+      "caption": "Graph: relationship graph around the scanned domain (IP, ASN, registrar, name servers) (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#graph",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1142,
+      "bytes": 353419,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Graph"
+      }
+    },
+    {
+      "file": "report-phishing-timeline.png",
+      "caption": "Timeline: events recorded for this scan and its domain (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/70#timeline",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1198,
+      "bytes": 368781,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scan_id": 70,
+        "tab": "Timeline"
+      }
+    },
+    {
+      "file": "report-phishing-brand.png",
+      "caption": "Brand: impersonated brand, technique and similarity (metamask-docs-keec0mi8n-consensys-ddffed67.vercel.app, risk 97/100, phishing)",
+      "group": "Scan report",
+      "kind": "screenshot",
+      "route": "/scans/61#brand",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 359385,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scan_id": 61,
+        "tab": "Brand"
+      }
+    },
+    {
+      "file": "analytics-1.png",
+      "caption": "Analytics (1/6): Analytics, Scans over time, Average risk trend, Activity heatmap",
+      "group": "Analytics",
+      "kind": "screenshot",
+      "route": "/analytics",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 228940,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 0
+      }
+    },
+    {
+      "file": "analytics-2.png",
+      "caption": "Analytics (2/6): Activity heatmap, Top-level domains, Scan sources, Impersonation techniques",
+      "group": "Analytics",
+      "kind": "screenshot",
+      "route": "/analytics",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 191841,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 436
+      }
+    },
+    {
+      "file": "analytics-3.png",
+      "caption": "Analytics (3/6): SSL status, Domain age distribution, Top failed checks, Countries, Top domains",
+      "group": "Analytics",
+      "kind": "screenshot",
+      "route": "/analytics",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 249437,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 1259
+      }
+    },
+    {
+      "file": "analytics-4.png",
+      "caption": "Analytics (4/6): Countries, Top domains, Threat insights, Threat types, Reputation tiers",
+      "group": "Analytics",
+      "kind": "screenshot",
+      "route": "/analytics",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 238264,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 1619
+      }
+    },
+    {
+      "file": "analytics-5.png",
+      "caption": "Analytics (5/6): Threat types, Reputation tiers, Content categories, Detection funnel, Performance",
+      "group": "Analytics",
+      "kind": "screenshot",
+      "route": "/analytics",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 242010,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 2290
+      }
+    },
+    {
+      "file": "analytics-6.png",
+      "caption": "Analytics (6/6): Detection funnel, Performance, Throughput, Check error rates",
+      "group": "Analytics",
+      "kind": "screenshot",
+      "route": "/analytics",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 199573,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 2667
+      }
+    },
+    {
+      "file": "model-lab-1.png",
+      "caption": "Model Lab (1/3): Model Lab, Dataset, 71, 51.8%, 88.7%",
+      "group": "Machine learning",
+      "kind": "screenshot",
+      "route": "/model",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 324887,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 0
+      }
+    },
+    {
+      "file": "model-lab-2.png",
+      "caption": "Model Lab (2/3): Metric comparison, Model selection:, Realistic evaluation \u2014 unseen domains, Dataset composition",
+      "group": "Machine learning",
+      "kind": "screenshot",
+      "route": "/model",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 280674,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 693
+      }
+    },
+    {
+      "file": "model-lab-3.png",
+      "caption": "Model Lab (3/3): Realistic evaluation \u2014 unseen domains, Dataset composition, ROC curves, Precision\u2013recall curves",
+      "group": "Machine learning",
+      "kind": "screenshot",
+      "route": "/model",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 387491,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {
+        "scroll_y": 1332
+      }
+    },
+    {
+      "file": "typosquat.png",
+      "caption": "Typosquat finder: lookalike permutations of paypal.com and which of them resolve",
+      "group": "Threat intelligence",
+      "kind": "screenshot",
+      "route": "/typosquat?domain=paypal.com",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1639,
+      "bytes": 316687,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "feeds.png",
+      "caption": "Threat feeds: local blocklists (OpenPhish, PhishTank, URLhaus, Phishing.Database, Phishing Army) with search and statistics",
+      "group": "Threat intelligence",
+      "kind": "screenshot",
+      "route": "/feeds",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1013,
+      "bytes": 308901,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "graph.png",
+      "caption": "Relationship graph: scanned domains linked through shared IPs, ASNs, name servers, registrars, brands and redirects",
+      "group": "Threat intelligence",
+      "kind": "screenshot",
+      "route": "/graph",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 292243,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "domain.png",
+      "caption": "Domain intelligence for www.indesx-mauve.vercel.app: every scan, risk trend and latest result",
+      "group": "Threat intelligence",
+      "kind": "screenshot",
+      "route": "/domains/www.indesx-mauve.vercel.app",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 238898,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "watchlist.png",
+      "caption": "Watchlist: scheduled re-checks of URLs/domains with typosquat monitoring and change alerts",
+      "group": "Monitoring",
+      "kind": "screenshot",
+      "route": "/watchlist",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 210405,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "alerts.png",
+      "caption": "Alerts raised by high-risk scans, watchlist changes and community verification",
+      "group": "Monitoring",
+      "kind": "screenshot",
+      "route": "/alerts",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 295445,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "activity.png",
+      "caption": "Activity log: audit trail of every scan, report, vote, bulk job and settings change",
+      "group": "Monitoring",
+      "kind": "screenshot",
+      "route": "/activity",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 2000,
+      "bytes": 194683,
+      "method": "p256",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "community.png",
+      "caption": "Community: PhishTank-style reports with voting",
+      "group": "Community",
+      "kind": "screenshot",
+      "route": "/community",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 199482,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "api-guide.png",
+      "caption": "API guide: copy-paste examples for the REST API",
+      "group": "Developer API",
+      "kind": "screenshot",
+      "route": "/api-guide",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 2000,
+      "bytes": 281125,
+      "method": "p256",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "api-docs.png",
+      "caption": "Interactive OpenAPI (Swagger) documentation served by FastAPI at /docs",
+      "group": "Developer API",
+      "kind": "screenshot",
+      "route": "/docs",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 2000,
+      "bytes": 164113,
+      "method": "p256",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "settings.png",
+      "caption": "Settings: verdict thresholds, network checks, optional VirusTotal / Google Safe Browsing keys and data retention",
+      "group": "Administration",
+      "kind": "screenshot",
+      "route": "/settings",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1532,
+      "bytes": 161461,
+      "method": "p256",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "dark-overview.png",
+      "caption": "Overview dashboard in dark mode",
+      "group": "Dark mode",
+      "kind": "screenshot",
+      "route": "/",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 372010,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "dark-report.png",
+      "caption": "Scan report in dark mode (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Dark mode",
+      "kind": "screenshot",
+      "route": "/scans/70",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 196050,
+      "method": "p256",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "dark-analytics.png",
+      "caption": "Analytics in dark mode",
+      "group": "Dark mode",
+      "kind": "screenshot",
+      "route": "/analytics",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 256646,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "mobile-overview.png",
+      "caption": "Overview on a phone (390x844)",
+      "group": "Mobile",
+      "kind": "screenshot",
+      "route": "/",
+      "theme": "light",
+      "viewport": "mobile",
+      "width": 780,
+      "height": 1688,
+      "bytes": 137757,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "mobile-report.png",
+      "caption": "Scan report on a phone (www.indesx-mauve.vercel.app, risk 97/100, phishing)",
+      "group": "Mobile",
+      "kind": "screenshot",
+      "route": "/scans/70",
+      "theme": "light",
+      "viewport": "mobile",
+      "width": 780,
+      "height": 1688,
+      "bytes": 154369,
+      "method": "rgb",
+      "warnings": [],
+      "extra": {}
+    },
+    {
+      "file": "demo.mp4",
+      "caption": "Demo walkthrough (80 s): Overview -> Deep scan of a phishing URL -> Scan report (AI summary, ML Explanation, HTTP, Content, Reputation, Graph) -> Analytics -> Model Lab -> Relationship graph -> History pivot",
+      "group": "Video",
+      "kind": "video",
+      "route": null,
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 800,
+      "bytes": 4941488,
+      "method": null,
+      "warnings": [],
+      "extra": {
+        "duration_s": 79.7,
+        "codec": "h264",
+        "crf": 28,
+        "chapters": [
+          {
+            "t": 0.2,
+            "label": "Overview"
+          },
+          {
+            "t": 6.5,
+            "label": "Deep scan of a phishing URL"
+          },
+          {
+            "t": 15.6,
+            "label": "Scan report (AI summary, ML Explanation, HTTP, Content, Reputation, Graph)"
+          },
+          {
+            "t": 45.2,
+            "label": "Analytics"
+          },
+          {
+            "t": 55.3,
+            "label": "Model Lab"
+          },
+          {
+            "t": 65.5,
+            "label": "Relationship graph"
+          },
+          {
+            "t": 70.6,
+            "label": "History pivot"
+          }
+        ],
+        "demo_url": "http://www.indesx-mauve.vercel.app/",
+        "demo_scan_id": 72,
+        "scan_wait_s": 3.3
+      }
+    },
+    {
+      "file": "demo.gif",
+      "caption": "Animated preview (first 25 s of the demo)",
+      "group": "Video",
+      "kind": "gif",
+      "route": null,
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 960,
+      "height": 600,
+      "bytes": 7757982,
+      "method": null,
+      "warnings": [],
+      "extra": {
+        "colors": 96,
+        "seconds": 25.0,
+        "width": 960,
+        "fps": 10
+      }
+    }
+  ],
+  "failed": [],
+  "skipped": [],
+  "notes": [],
+  "sidebar": [
+    "Overview",
+    "Scan",
+    "History",
+    "Bulk Scan",
+    "Analytics",
+    "Graph",
+    "Model Lab",
+    "Watchlist",
+    "Typosquat",
+    "Community",
+    "Threat Feeds",
+    "Alerts",
+    "Activity Log",
+    "Settings",
+    "API Docs",
+    "API Guide"
+  ],
+  "demo": {
+    "url": "http://www.indesx-mauve.vercel.app/",
+    "scan_id": 72
+  }
+}

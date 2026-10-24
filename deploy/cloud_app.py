@@ -16,7 +16,7 @@ backend/app/main.py. Nothing in backend/ is edited; everything here is a cloud-o
 * background warm-up (ML models, threat-feed sets, Tranco) so the first scan is not slowed by cold loads
 * cloud-only routes (not in the OpenAPI schema):
     GET /api/_diag  - runtime diagnostics (python, /tmp, whois, DNS, TCP 443/43, RSS, cold-start timings, ...)
-    GET /api/_cron  - one watchlist / CT / re-check / retention tick for Vercel Cron (Authorization: Bearer
+    GET /api/_cron  - one watchlist re-scan + data-retention tick for Vercel Cron (Authorization: Bearer
                       $CRON_SECRET when CRON_SECRET is set)
 If backend/app fails to import (e.g. a half-finished edit), a fallback app still serves /api/_diag and
 answers every other path with 503 + the import error, so the failure is visible instead of a crash loop.
@@ -323,7 +323,7 @@ def _warmup() -> None:
     w = STATE["warmup"]
     w["started"] = True
     t_all = time.perf_counter()
-    for name, fn in (("model", _warm_model), ("feeds", _warm_feeds), ("tranco", _warm_tranco)):
+    for name, fn in (("feeds", _warm_feeds), ("model", _warm_model), ("tranco", _warm_tranco)):
         t = time.perf_counter()
         try:
             fn()
@@ -341,6 +341,12 @@ def _warm_model() -> None:
 
 def _warm_feeds() -> None:
     from app.analysis import feeds
+    try:  # pre-built index (deploy/feeds_index.pkl.gz, deploy/feedindex.py): ~0.3 s instead of ~5.7 s parsing
+        from deploy import feedindex
+        STATE["warmup"]["feeds_index"] = feedindex.inject(
+            feeds, Path(feeds.__file__), Path(feeds.FEED_DIR), Path(__file__).resolve().parent / "feeds_index.pkl.gz")
+    except Exception as e:  # fall back to the backend's own parser below
+        STATE["warmup"]["feeds_index"] = {"status": f"error: {type(e).__name__}: {e}"[:300]}
     feeds.lookup("http://warmup.phishguard.invalid/")
 
 
@@ -582,20 +588,6 @@ async def cron(request_headers: dict, budget_s: float = 240, max_watch: int = 5,
                          "verdict": (r or {}).get("last_verdict"), "risk": (r or {}).get("last_risk")})
         return done
 
-    async def ct_phase():
-        try:
-            from app.services import ct_monitor
-        except ImportError:
-            return "module not present (CT monitoring cut from scope)"
-        return await ct_monitor.tick() if hasattr(ct_monitor, "tick") else "no tick()"
-
-    async def recheck_phase():
-        try:
-            from app.services import recheck
-        except ImportError:
-            return "module not present (auto re-check cut from scope)"
-        return await recheck.tick() if hasattr(recheck, "tick") else "no tick()"
-
     async def retention_phase():
         from app.services import watcher
         return await asyncio.to_thread(watcher.apply_retention) if hasattr(watcher, "apply_retention") else "n/a"
@@ -606,8 +598,6 @@ async def cron(request_headers: dict, budget_s: float = 240, max_watch: int = 5,
         return {"total_entries": feeds_service.total_entries()}
 
     await _phase(results, "watchlist", watch_phase, deadline, 200)
-    await _phase(results, "ct", ct_phase, deadline, 90)
-    await _phase(results, "recheck", recheck_phase, deadline, 120)
     await _phase(results, "retention", retention_phase, deadline, 30)
     if feeds:
         await _phase(results, "feeds", feeds_phase, deadline, 150)
@@ -641,6 +631,9 @@ def _install_routes(app) -> None:
         status, body = await cron(dict(request.headers), budget_s, max_watch, feeds)
         return JSONResponse(body, status_code=status, headers={"Cache-Control": "no-store"})
 
+    # this module uses `from __future__ import annotations`; FastAPI cannot resolve the string "Request" of a
+    # locally imported name (it would expect a required ?request= query param -> 422), so pin the real class
+    _cron_ep.__annotations__["request"] = Request
     app.add_api_route("/api/_diag", _diag_ep, methods=["GET"], include_in_schema=False)
     app.add_api_route("/api/_cron", _cron_ep, methods=["GET", "POST"], include_in_schema=False)
     routes = app.router.routes

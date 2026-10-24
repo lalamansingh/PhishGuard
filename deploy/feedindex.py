@@ -44,24 +44,27 @@ def dump(fm, feeds_py: Path, feed_dir: Path, dst: Path) -> dict:
 
 
 def inject(fm, feeds_py: Path, feed_dir: Path, src: Path) -> dict:
-    """Cold start: install the pickled state into app.analysis.feeds if the fingerprint matches."""
+    """Cold start: install the pickled state into app.analysis.feeds if the fingerprint matches.
+
+    Holds the module's own lock for the whole (fast) load, so a scan arriving meanwhile waits ~0.3 s for the
+    index instead of starting its own ~5.7 s parse, and an already-loaded module is never overwritten."""
     if not src.exists():
         return {"status": "no index"}
     t = time.perf_counter()
-    if getattr(fm, "_loaded", False):
-        return {"status": "already loaded"}
-    with gzip.open(src, "rb") as f:
-        payload = pickle.load(f)
-    want = payload.get("fingerprint") or {}
-    have = fingerprint(fm, feeds_py, feed_dir)
-    if want != have:
-        diff = [k for k in set(want) | set(have) if want.get(k) != have.get(k)]
-        return {"status": "stale (feeds.py or feed files changed since build_cloud_seed.py) - backend parses "
-                          "feeds itself", "mismatch": sorted(diff)}
     lock = getattr(fm, "_lock", None)
     if lock is not None:
         lock.acquire()
     try:
+        if getattr(fm, "_loaded", False):
+            return {"status": "already loaded"}
+        with gzip.open(src, "rb") as f:
+            payload = pickle.load(f)
+        want = payload.get("fingerprint") or {}
+        have = fingerprint(fm, feeds_py, feed_dir)
+        if want != have:
+            diff = [k for k in set(want) | set(have) if want.get(k) != have.get(k)]
+            return {"status": "stale (feeds.py or feed files changed since build_cloud_seed.py) - backend parses "
+                              "feeds itself", "mismatch": sorted(diff)}
         for attr, value in (payload.get("state") or {}).items():
             cur = getattr(fm, attr, None)
             if isinstance(cur, dict):

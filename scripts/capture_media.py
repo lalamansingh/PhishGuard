@@ -51,6 +51,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = ROOT / "docs" / "media"
 DEMO_URL = "http://paypal-login-verify.secure-account.xyz/update"
 TYPOSQUAT_DOMAIN = "paypal.com"
+BULK_SAMPLE = ("https://www.google.com", "https://github.com/login", "http://paypal-login-verify.secure-account.xyz/update",
+               "http://www.indesx-mauve.vercel.app/", "https://www.dropbox.com/login", "https://github.com/login")
 GALLERY_START = "<!-- MEDIA-GALLERY:START -->"
 GALLERY_END = "<!-- MEDIA-GALLERY:END -->"
 METRICS_START = "<!-- ML-METRICS:START -->"
@@ -88,7 +90,7 @@ PAGES: tuple[PageSpec, ...] = (
              "Scan history: search, filters, sorting and CSV/JSON export of every scan", "Scanning"),
     PageSpec("bulk", ("Bulk Scan", "Bulk"), ("/bulk",),
              "Bulk scanning: paste or upload up to 500 URLs and follow the job", "Scanning"),
-    PageSpec("analytics", ("Analytics",), ("/analytics",), "Analytics", "Analytics", mode="sections", sections=4),
+    PageSpec("analytics", ("Analytics",), ("/analytics",), "Analytics", "Analytics", mode="sections", sections=6),
     PageSpec("model-lab", ("Model Lab", "Model"), ("/model",), "Model Lab", "Machine learning", mode="sections",
              sections=3),
     PageSpec("watchlist", ("Watchlist",), ("/watchlist",),
@@ -106,18 +108,10 @@ PAGES: tuple[PageSpec, ...] = (
     PageSpec("activity", ("Activity Log", "Activity"), ("/activity",),
              "Activity log: audit trail of every scan, report, vote, bulk job and settings change", "Monitoring"),
     PageSpec("settings", ("Settings",), ("/settings",),
-             "Settings: verdict thresholds, network checks, optional API keys and data retention", "Administration"),
+             "Settings: verdict thresholds, network checks, optional VirusTotal / Google Safe Browsing keys and data retention", "Administration"),
     PageSpec("graph", ("Graph", "Relationship Graph"), ("/graph",),
-             "Relationship graph: domains, IPs, ASNs, name servers, registrars and favicons linked across scans",
+             "Relationship graph: scanned domains linked through shared IPs, ASNs, name servers, registrars, brands and redirects",
              "Threat intelligence", v2=True),
-    PageSpec("rules", ("Hunting Rules", "Rules"), ("/rules",),
-             "Hunting rules: saved searches evaluated after every scan, with matches and alerts", "Monitoring", v2=True),
-    PageSpec("disputes", ("Disputes",), ("/disputes",),
-             "Disputes: false-positive re-evaluation with a forced rescan and open/upheld/overturned status",
-             "Community", v2=True),
-    PageSpec("api-keys", ("API Keys",), ("/api-keys", "/keys"),
-             "API keys: create/revoke keys for the X-API-Key header, per-key rate limits and usage", "Developer API",
-             v2=True),
     PageSpec("api-guide", ("API Guide",), ("/api-guide",),
              "API guide: copy-paste examples for the REST API", "Developer API"),
 )
@@ -125,22 +119,23 @@ PAGES: tuple[PageSpec, ...] = (
 # (key, label aliases (normalised, exact or prefix match), caption, optional)
 # optional tabs (v2) are captured when the report has them; their absence is "skipped", not a failure.
 REPORT_TABS: tuple[tuple[str, tuple[str, ...], str, bool], ...] = (
-    ("summary", ("summary", "overview"), "Summary: risk gauge, verdict, score breakdown and every check", False),
+    ("summary", ("summary", "overview"), "Summary: risk gauge, trust tier, AI summary, score factors and every check", False),
     ("ml", ("ml explanation", "ml", "machine learning", "model"),
      "ML Explanation: per-model probabilities and the URL features that raised or lowered the score", False),
     ("domain", ("domain", "whois"), "Domain: WHOIS (registrar, age, expiry) and DNS records", False),
+    ("geo", ("geo & hosting", "geo and hosting", "geo", "hosting"),
+     "Geo & Hosting: server IP location, ASN / network owner and hosting provider", True),
     ("ssl", ("ssl", "tls", "certificate"), "SSL: certificate issuer, validity window, SANs and protocol", False),
     ("http", ("http & content", "http and content", "http"),
      "HTTP: redirect chain, security headers, forms, links and scripts", False),
     ("brand", ("brand",), "Brand: impersonated brand, technique and similarity", False),
-    ("reputation", ("reputation",), "Reputation: threat-feed and blocklist engines plus community votes", False),
-    ("engines", ("engines",), "Engines: per-engine verdicts (local feeds, DNS blocklists, PhishGuard ML)", True),
-    ("content", ("content",), "Content: page category, language and parked-domain detection, plus trackers", True),
+    ("reputation", ("reputation",), "Reputation: per-engine verdicts (local threat feeds, DNS blocklists, PhishGuard ML) plus community votes", False),
+    ("content", ("content",), "Content: page category, language and parked-domain detection, plus analytics/ad trackers", True),
     ("resources", ("resources",), "Resources: contacted domains and every script, style, image, frame and form",
      True),
     ("source", ("source", "dom", "html source"), "Source: stored HTML of the page with line numbers and search",
      True),
-    ("graph", ("graph",), "Graph: relationship graph around the scanned domain", True),
+    ("graph", ("graph",), "Graph: relationship graph around the scanned domain (IP, ASN, registrar, name servers)", True),
     ("timeline", ("timeline",), "Timeline: events recorded for this scan and its domain", True),
 )
 LEGIT_TABS = ("summary", "ml")
@@ -149,8 +144,8 @@ DEEP_TABS = {"content", "resources", "source", "graph"}
 TAB_VOCAB = ("summary", "ml", "domain", "geo", "ssl", "http", "brand", "reputation", "engines", "content",
              "resources", "source", "email", "favicon", "cloaking", "browser", "graph", "timeline", "screenshot", "raw")
 # report tabs shown in the video, by priority (at most VIDEO_MAX_TABS, then played in tab-bar order)
-VIDEO_TABS = ("ml", "domain", "http", "reputation", "engines", "graph", "brand", "content", "ssl")
-VIDEO_MAX_TABS = 7
+VIDEO_TABS = ("ml", "content", "graph", "reputation", "http", "domain", "brand", "ssl")
+VIDEO_MAX_TABS = 5
 VIDEO_SCROLL_TABS = {"ml", "http", "engines", "content"}
 GROUP_ORDER = ("Dashboard", "Scanning", "Scan report", "Analytics", "Machine learning", "Threat intelligence",
                "Monitoring", "Community", "Developer API", "Administration", "Dark mode", "Mobile", "Video")
@@ -547,6 +542,7 @@ class Config:
     verbose: bool
     show_demo_banner: bool = False
     readme_metrics: bool = False
+    display_origin: str | None = None  # origin printed in page text (e.g. the API guide) instead of --base-url's
 
 
 # ============================================================================ capture
@@ -724,6 +720,19 @@ class Capture:
         log(f"{dest.name:34s} {w}x{h} {human(len(data)):>9s} ({method}){note}", "ok" if not m.warnings else "warn")
         return m
 
+    def show_display_origin(self, page: Page) -> None:
+        """Captures run on spare ports; print the app's normal origin (--display-origin) in visible page text."""
+        u = urllib.parse.urlsplit(self.cfg.base_url)
+        here, there = f"{u.scheme}://{u.netloc}", (self.cfg.display_origin or "").rstrip("/")
+        if not there or there == here:
+            return
+        try:
+            page.evaluate("""([a, b]) => { const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+                for (let n = w.nextNode(); n; n = w.nextNode()) if (n.nodeValue.includes(a)) n.nodeValue = n.nodeValue.split(a).join(b); }""",
+                          [here, there])
+        except PWError:
+            pass
+
     def shoot(self, page: Page, tr: NetTracker, name: str, caption: str, group: str, *, route: str | None,
               full: bool = True, theme: str = "light", viewport: str = "desktop", target_width: int | None = None,
               extra: dict | None = None) -> Media:
@@ -743,6 +752,7 @@ class Capture:
                 resized = True
                 page.wait_for_timeout(350)
                 self.settle(page, tr, timeout=10, after_ms=350)
+        self.show_display_origin(page)
         try:
             raw = page.screenshot(type="png", animations="disabled", caret="hide", timeout=60_000)
         finally:
@@ -870,8 +880,7 @@ class Capture:
             for name in ("analytics", "model-lab", "watchlist"):
                 self.attempt(name, lambda s=by_name[name]: self.capture_page(page, tr, s))
             self.attempt("typosquat", lambda: self.capture_typosquat(page, tr, by_name["typosquat"]))
-            for name in ("community", "feeds", "alerts", "activity", "settings", "graph", "rules", "disputes",
-                         "api-keys", "api-guide"):
+            for name in ("community", "feeds", "alerts", "activity", "settings", "graph", "api-guide"):
                 self.attempt(name, lambda s=by_name[name]: self.capture_page(page, tr, s))
             if self.phish:
                 self.attempt("domain", lambda: self.capture_domain(page, tr))
@@ -906,7 +915,19 @@ class Capture:
         self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route)
 
     def capture_bulk(self, page: Page, tr: NetTracker, spec: PageSpec) -> None:
-        self.capture_page(page, tr, spec)
+        route, _ = self.route_for(spec)
+        p = self.goto(page, tr, route)
+        if p.get("notFound"):
+            self.fail(spec.name, f"{route}: Page not found")
+            return
+        try:  # paste a few sample URLs (not submitted) so the form shows its de-duplicated URL count
+            ta = page.locator("main textarea").first
+            if ta.count():
+                ta.fill("\n".join(BULK_SAMPLE))
+                page.wait_for_timeout(250)
+        except PWError:
+            pass
+        self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route)
         jobs = self.api.try_get("/api/bulk")
         jobs = jobs.get("items") if isinstance(jobs, dict) else jobs
         if not jobs:
@@ -1010,6 +1031,29 @@ class Capture:
             if empty:
                 m.warnings.append(f"empty state: {'; '.join(empty)}")
                 log(f"  {m.file} shows an empty state ({'; '.join(empty)})", "warn")
+        if prefix == "report-phishing" and "brand" in wanted and not (scan.get("brand") or {}).get("impersonated_brand"):
+            alt = self.pick_branded(exclude=scan.get("id"))
+            if alt:
+                route = f"/scans/{alt['id']}"
+                self.goto(page, tr, route, timeout=40)
+                t = match_label(self.find_tabs(page), specs["brand"][0])
+                if t:
+                    page.locator(f'[data-capture-tab="{t["i"]}"]').first.click()
+                    page.wait_for_timeout(250)
+                    self.settle(page, tr, timeout=30)
+                    self.items = [x for x in self.items if x.file != f"{prefix}-brand.png"]
+                    self.shoot(page, tr, f"{prefix}-brand", self.report_caption(alt, specs["brand"][1]),
+                               "Scan report", route=f"{route}#brand", extra={"scan_id": alt["id"], "tab": t["label"]})
+
+    def pick_branded(self, exclude: Any = None) -> dict | None:
+        """Highest-risk phishing scan that impersonates a brand (for the Brand tab shot)."""
+        res = self.api.try_get("/api/scans", verdict="phishing", sort="risk_score", order="desc", page_size=50) or {}
+        for it in res.get("items", []):
+            if it.get("brand") and it.get("id") != exclude:
+                full = self.api.try_get(f"/api/scans/{it['id']}") or {}
+                if (full.get("brand") or {}).get("impersonated_brand"):
+                    return full
+        return None
 
     @staticmethod
     def empty_states(page: Page) -> list[str]:
@@ -1472,6 +1516,9 @@ class DemoDriver:
                 used.add(t["i"])
                 present.append((key, t))
         present.sort(key=lambda kt: kt[1]["i"])  # play them left to right
+        if self.chapters and self.chapters[-1][0] == "Scan report":  # name what the viewer sees in the caption
+            shown = ["AI summary"] + [t["label"] for _, t in present]
+            self.chapters[-1] = (f"Scan report ({', '.join(shown)})", self.chapters[-1][1])
         dwell = max(1.5, min(2.6, 22.0 / max(1, len(present))))
         for key, t in present:
             tabs = cap.find_tabs(page)
@@ -1493,35 +1540,41 @@ class DemoDriver:
         self.chapter("Analytics")
         if self.nav_click(("Analytics",), "/analytics"):
             self.pause(1.4)
-            self.browse(3, step_px=650, ms=2100, dwell=1.0)
+            self.browse(2, step_px=650, ms=2000, dwell=1.0)
         self.chapter("Model Lab")
         if self.nav_click(("Model Lab", "Model"), "/model"):
             self.pause(1.3)
-            self.browse(3, step_px=650, ms=2000, dwell=1.0)
+            self.browse(2, step_px=650, ms=2000, dwell=1.0)
         if any(norm_label(n["label"]) in ("graph", "relationship graph") for n in cap.nav):
             self.chapter("Relationship graph")
             if self.nav_click(("Graph", "Relationship Graph"), None):  # type: ignore[arg-type]
                 self.pause(3.5)
 
         # 4) history filters
-        self.chapter("History filters")
+        self.chapter("History pivot")
         if self.nav_click(("History",), "/history"):
             self.pause(1.0)
-            search = cap.find_input(page, lambda i: i["tag"] == "input" and "search" in i["placeholder"].lower())
-            if search is not None and self.click(search, 500):
-                search.press_sequentially("paypal", delay=110)
-                self.settle(timeout=8, after_ms=200)
+            # pivot: every scan sharing the demo scan's threat type / tier (v2 pivot filters, synced to the URL)
+            scan = (cap.api.try_get(f"/api/scans/{self.scan_id}") if self.scan_id else None) or cap.phish or {}
+            pivot = next(((k, scan.get(k)) for k in ("threat_type", "tier", "registrar") if scan.get(k)), None)
+            if pivot:
+                page.goto(cap.url("/history?" + urllib.parse.urlencode({pivot[0]: pivot[1]})),
+                          wait_until="domcontentloaded")
+                self.settle(timeout=10, after_ms=300)
+                self.pause(1.2)
+                self.scroll(by=360, ms=1200)
                 self.pause(1.6)
-            verdict = cap.find_input(page, lambda i: i["tag"] == "select" and any(
-                o["value"].lower() == "phishing" or o["text"].lower() == "phishing" for o in i["options"]))
-            if verdict is not None and self.glide_to(verdict, 500):
-                self.pause(0.2)
-                try:
-                    verdict.select_option(value="phishing")
-                except PWError:
-                    verdict.select_option(label="Phishing")
-                self.settle(timeout=8, after_ms=200)
-                self.pause(2.2)
+            else:
+                verdict = cap.find_input(page, lambda i: i["tag"] == "select" and any(
+                    o["value"].lower() == "phishing" or o["text"].lower() == "phishing" for o in i["options"]))
+                if verdict is not None and self.glide_to(verdict, 500):
+                    self.pause(0.2)
+                    try:
+                        verdict.select_option(value="phishing")
+                    except PWError:
+                        verdict.select_option(label="Phishing")
+                    self.settle(timeout=8, after_ms=200)
+                    self.pause(2.2)
         self.pause(1.0)
         self.marks["end"] = self.now()
 
@@ -1684,6 +1737,8 @@ def parse_args(argv: list[str] | None = None) -> Config:
     ap.add_argument("--gallery-only", action="store_true",
                     help="no capture: only rebuild the README blocks from an existing manifest.json")
     ap.add_argument("--keep-raw", action="store_true", help="also keep the raw Playwright .webm (demo-raw.webm)")
+    ap.add_argument("--display-origin", default=None,
+                    help="origin to show in page text when capturing on another port, e.g. http://localhost:5173")
     ap.add_argument("--headed", action="store_true", help="show the browser")
     ap.add_argument("-v", "--verbose", action="store_true", help="print tracebacks")
     a = ap.parse_args(argv)
@@ -1696,7 +1751,8 @@ def parse_args(argv: list[str] | None = None) -> Config:
         scan_timeout=a.scan_timeout, phishing_scan_id=a.phishing_scan_id, legit_scan_id=a.legit_scan_id,
         readme=Path(a.readme).expanduser().resolve() if a.readme else None, readme_media_path=a.readme_media_path,
         gallery_only=a.gallery_only, keep_raw=a.keep_raw, all_tabs=a.all_tabs, verbose=a.verbose,
-        show_demo_banner=a.show_demo_banner, readme_metrics=a.readme_metrics)
+        show_demo_banner=a.show_demo_banner, readme_metrics=a.readme_metrics,
+        display_origin=a.display_origin)
 
 
 def media_path_for(cfg: Config) -> str:
