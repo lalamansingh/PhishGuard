@@ -182,7 +182,7 @@ The design merges user-facing features of 12 public URL-safety services, researc
 
 <video src="https://github.com/at9501264-stack/mini-project/raw/main/docs/media/demo.mp4" controls width="100%"></video>
 
-If the player does not load, open the video directly: [docs/media/demo.mp4](docs/media/demo.mp4). The walkthrough (about 60-90 s) shows the Overview, a deep scan of a phishing-style URL, the report tabs, Analytics, the Model Lab, the relationship graph and History. The GIF at the top of this page is its first part.
+If the player does not load, open the video directly: [docs/media/demo.mp4](docs/media/demo.mp4). The walkthrough (about 80 s) shows the Overview, a deep scan of a phishing-style URL, the report tabs, Analytics, the Model Lab, the relationship graph and History. The GIF at the top of this page is its first part.
 
 ## Screenshots
 
@@ -205,7 +205,7 @@ The images below were captured with [`scripts/capture_media.py`](scripts/capture
     <td width="50%" valign="top"><a href="docs/media/report-phishing-graph.png"><img src="docs/media/report-phishing-graph.png" alt="Graph tab: relationship graph around the scanned domain"></a><br><sub>Graph tab: relationship graph around the scanned domain</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><a href="docs/media/analytics-1.png"><img src="docs/media/analytics-1.png" alt="Analytics: scans over time, average risk trend and activity heatmap"></a><br><sub>Analytics: scans over time, average risk trend and activity heatmap</sub></td>
+    <td width="50%" valign="top"><a href="docs/media/analytics-1.png"><img src="docs/media/analytics-1.png" alt="Analytics (1/6): Scans over time, Average risk trend, Activity heatmap"></a><br><sub>Analytics (1/6): Scans over time, Average risk trend, Activity heatmap</sub></td>
     <td width="50%" valign="top"><a href="docs/media/model-lab-1.png"><img src="docs/media/model-lab-1.png" alt="Model Lab: dataset, model comparison and live model statistics"></a><br><sub>Model Lab: dataset, model comparison and live model statistics</sub></td>
   </tr>
   <tr>
@@ -243,7 +243,7 @@ The images below were captured with [`scripts/capture_media.py`](scripts/capture
   </tr>
   <tr>
     <td width="50%" valign="top"><a href="docs/media/report-phishing-domain.png"><img src="docs/media/report-phishing-domain.png" alt="Domain tab: WHOIS (registrar, age, expiry) and DNS records"></a><br><sub>Domain tab: WHOIS (registrar, age, expiry) and DNS records</sub></td>
-    <td width="50%" valign="top"><a href="docs/media/report-phishing-geo.png"><img src="docs/media/report-phishing-geo.png" alt="Geo &amp; Hosting: server IP location, ASN / network owner and hosting provider (www.indesx-mauve.vercel.app, risk 97/100, phishing)"></a><br><sub>Geo &amp; Hosting: server IP location, ASN / network owner and hosting provider (www.indesx-mauve.vercel.app, risk 97/100, phishing)</sub></td>
+    <td width="50%" valign="top"><a href="docs/media/report-phishing-geo.png"><img src="docs/media/report-phishing-geo.png" alt="Geo &amp; Hosting tab: IP geolocation, ASN and hosting provider"></a><br><sub>Geo &amp; Hosting tab: IP geolocation, ASN and hosting provider</sub></td>
   </tr>
   <tr>
     <td width="50%" valign="top"><a href="docs/media/report-phishing-http.png"><img src="docs/media/report-phishing-http.png" alt="HTTP tab: redirect chain, security headers, forms, links and scripts"></a><br><sub>HTTP tab: redirect chain, security headers, forms, links and scripts</sub></td>
@@ -262,11 +262,11 @@ The images below were captured with [`scripts/capture_media.py`](scripts/capture
 
 <table>
   <tr>
-    <td width="50%" valign="top"><a href="docs/media/analytics-2.png"><img src="docs/media/analytics-2.png" alt="Analytics: TLDs, scan sources and impersonation techniques"></a><br><sub>Analytics: TLDs, scan sources and impersonation techniques</sub></td>
-    <td width="50%" valign="top"><a href="docs/media/analytics-3.png"><img src="docs/media/analytics-3.png" alt="Analytics: SSL status, domain age, top failed checks, countries and top domains"></a><br><sub>Analytics: SSL status, domain age, top failed checks, countries and top domains</sub></td>
+    <td width="50%" valign="top"><a href="docs/media/analytics-2.png"><img src="docs/media/analytics-2.png" alt="Analytics (2/6): Activity heatmap, Top-level domains, Scan sources, Impersonation techniques"></a><br><sub>Analytics (2/6): Activity heatmap, Top-level domains, Scan sources, Impersonation techniques</sub></td>
+    <td width="50%" valign="top"><a href="docs/media/analytics-3.png"><img src="docs/media/analytics-3.png" alt="Analytics (3/6): SSL status, Domain age distribution, Top failed checks, Countries, Top domains"></a><br><sub>Analytics (3/6): SSL status, Domain age distribution, Top failed checks, Countries, Top domains</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><a href="docs/media/analytics-4.png"><img src="docs/media/analytics-4.png" alt="Analytics: threat types, reputation tiers and content categories"></a><br><sub>Analytics: threat types, reputation tiers and content categories</sub></td>
+    <td width="50%" valign="top"><a href="docs/media/analytics-4.png"><img src="docs/media/analytics-4.png" alt="Analytics (4/6): Countries, Top domains, Threat insights, Threat types, Reputation tiers"></a><br><sub>Analytics (4/6): Countries, Top domains, Threat insights, Threat types, Reputation tiers</sub></td>
     <td width="50%" valign="top"><a href="docs/media/analytics-5.png"><img src="docs/media/analytics-5.png" alt="Analytics (5/6): Threat types, Reputation tiers, Content categories, Detection funnel, Performance"></a><br><sub>Analytics (5/6): Threat types, Reputation tiers, Content categories, Detection funnel, Performance</sub></td>
   </tr>
   <tr>
@@ -614,6 +614,7 @@ phishguard/
 ├── docs/
 │   ├── ARCHITECTURE.md           # detailed architecture
 │   ├── DEMO_GUIDE.md             # 5-minute viva demo script
+│   ├── DEPLOY_NOTES.md           # Vercel deployment rehearsal notes
 │   ├── FEATURES.md               # research of the 12 URL-safety tools
 │   ├── SPEC.md, SPEC_V2.md       # build specifications (SPEC_V2 starts with the mini-project scope)
 │   ├── FE_V2_CONTRACT.md         # frontend data contract
@@ -741,7 +742,7 @@ To point the dev server at another backend: `PHISHGUARD_API=http://127.0.0.1:800
 | `PHISHGUARD_NO_SCHEDULER` | unset | `1` = do not start the background watchlist / retention scheduler |
 | `PHISHGUARD_CLOUD` | unset | `1` = hosted demo mode: `GET /api/health` returns `cloud: true` and the dashboard shows the demo banner |
 | `PHISHGUARD_API` (frontend dev server) | `http://localhost:8000` | Backend that Vite proxies `/api` to |
-| `CRON_SECRET` (Vercel only, optional) | unset | If set, `/api/_cron` requires `Authorization: Bearer <CRON_SECRET>` |
+| `CRON_SECRET` (Vercel only, optional) | unset | If set, `/api/_cron` requires `Authorization: Bearer <CRON_SECRET>`; if unset, only Vercel's own cron requests are accepted |
 
 Verdict thresholds, network checks, DNS blocklists, RDAP, screenshots, the request timeout, data retention and the optional Google Safe Browsing / VirusTotal API keys are set on the **Settings** page and stored in the database. Keys are masked in API responses.
 
@@ -773,31 +774,36 @@ Step by step:
    vercel login
    ```
 
-2. **Link the folder to a Vercel project** (run in the repository root; choose or create the project, for example `phishguard-mini-project`):
+2. **Link the folder to the Vercel project** (run in the repository root):
 
    ```bash
-   vercel link
+   vercel link --yes --project phishguard-mini-project
    ```
 
-3. **Build the cloud snapshot** from your local data. This copies `backend/data/phishguard.db` to `deploy/seed.db` (removing API keys and other secrets, closing unfinished bulk jobs, shrinking stored HTML) and packs the threat feeds into `deploy/feeds/*.gz` (31 MB to about 8 MB):
+3. **Build the cloud snapshot** from your local data. This copies `backend/data/phishguard.db` to `deploy/seed.db` (removing API keys and other secrets, closing unfinished bulk jobs, shrinking stored HTML) and packs the threat feeds into `deploy/feeds/*.gz` (31 MB to about 8 MB) plus a prebuilt feed index:
 
    ```bash
    backend/.venv/bin/python deploy/build_cloud_seed.py
    ```
 
-4. **Run the pre-flight checks**: upload and bundle size, Python requirements against the actual imports, and snapshot freshness. `--smoke` also starts the cloud app locally on a free port and calls `/api/health`, `/api/_diag`, `/api/scans` and a deep `POST /api/scan`:
+4. **Run the pre-flight checks**: upload and bundle size, Python requirements against the actual imports, and snapshot freshness. The output must end with `PREFLIGHT OK`. Add `--smoke` to also start the cloud app locally on a free port and call `/api/health`, `/api/_diag`, `/api/scans` and a deep `POST /api/scan`:
 
    ```bash
-   backend/.venv/bin/python deploy/preflight.py --smoke
+   backend/.venv/bin/python deploy/preflight.py
    ```
 
-5. **Deploy to production:**
+5. **Deploy to production** (optionally build the frontend first with `cd frontend && npm run build`, the same build Vercel runs):
 
    ```bash
-   vercel deploy --prod
+   vercel deploy --prod --yes
    ```
 
-6. Optional: add a `CRON_SECRET` environment variable in the Vercel project settings to protect the cron endpoint.
+   To try a build first, `vercel deploy --yes` makes a protected preview deployment.
+
+6. **Verify** with `curl -s https://phishguard-mini-project.vercel.app/api/health`, which should report `"status":"ok"` and `"cloud":true`, and open `/docs`.
+7. Optional: add a `CRON_SECRET` environment variable in the Vercel project settings. Without it, `/api/_cron` accepts only Vercel's own cron requests.
+
+The full notes from the deployment rehearsal, with verification commands and troubleshooting, are in [docs/DEPLOY_NOTES.md](docs/DEPLOY_NOTES.md).
 
 **What demo mode changes** (`deploy/cloud_app.py` sets these defaults; Vercel project variables win):
 
@@ -805,7 +811,9 @@ Step by step:
 - `PHISHGUARD_DB_PATH=/tmp/phishguard.db`: on every cold start, the bundled `deploy/seed.db` is copied to `/tmp`, so new scans, reports and watchlist items **disappear when the function restarts**. The demo timestamps are shifted forward so the "last 24h / 7d / 30d" charts are never empty.
 - `PHISHGUARD_NO_SEED=1` and `PHISHGUARD_NO_SCHEDULER=1`: no demo seeding and no background loop. Instead, a **Vercel Cron job runs daily at 02:30 UTC** (`/api/_cron`): it checks up to 5 due watchlist items and applies data retention.
 - Threat feeds are unpacked from `deploy/feeds/*.gz` into `/tmp` instead of being downloaded at startup, and the Tranco rank comes from the bundled `.npz` index.
-- WHOIS uses RDAP when the `whois` binary is not available. Live checks run from Vercel's servers, so results can differ from a local run.
+- Data lives in each function instance's `/tmp`, so two visitors can briefly see different data, and a manual feed refresh lasts only for that instance.
+- The optional API keys are removed from the snapshot, so the Google Safe Browsing and VirusTotal integrations are off in the demo.
+- WHOIS uses RDAP, because the Vercel runtime has no `whois` binary. Live checks run from Vercel's servers, so results can differ from a local run.
 - An extra diagnostics route, `GET /api/_diag`, reports the runtime state (Python, `/tmp`, DNS, cold-start timings).
 - There is no login or rate limiting. Do not put private data or real API keys into the public demo.
 
@@ -852,7 +860,7 @@ curl -s -X POST http://localhost:8000/api/scan \
    - **Brand** and **Reputation**: look-alike detection, detection engines, feed hits and community votes.
    - **Screenshot** (when enabled), **Graph**, **Timeline** and **Raw JSON**.
 
-   The buttons let you rescan, add tags and notes, compare with another scan of the domain, export JSON, print, copy a link to the report, or report the URL to the community.
+   The header buttons let you rescan, add tags and notes, compare with another scan of the domain, export JSON, print or copy a link to the report. The Reputation tab has "phishing" and "legitimate" vote buttons that create or join a community report.
 3. **Scan in bulk.** On **Bulk Scan**, paste up to 500 URLs or upload a CSV/TXT file. The job runs in the background, and its results can be filtered and exported.
 4. **Monitor.** On **Watchlist**, add a URL or domain with a check interval and, optionally, typosquat monitoring. Alerts appear in the bell menu and on the **Alerts** page when the verdict changes or a new look-alike domain starts resolving.
 5. **Investigate.** **History** filters and exports every scan; click an IP, ASN, registrar, category or tier to pivot. **Graph** shows how domains share infrastructure. **Typosquat** lists look-alikes of a domain. **Threat Feeds** searches the local blocklists.
