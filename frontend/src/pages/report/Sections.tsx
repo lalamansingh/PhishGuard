@@ -752,7 +752,7 @@ export function ScreenshotTab({ scan }: { scan: ScanResult }) {
   const [failed, setFailed] = useState(false)
   const src = scan.screenshot_url
   return (
-    <Section title="Page screenshot" subtitle="Captured in an isolated headless browser" right={src && !failed ? <a href={src} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400">Open full size <ExternalLink className="size-3" /></a> : null}>
+    <Section title="Page screenshot" subtitle="Preview image from the third-party thum.io screenshot service" right={src && !failed ? <a href={src} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400">Open full size <ExternalLink className="size-3" /></a> : null}>
       {src && !failed ? (
         <div className="overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center gap-1.5 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 dark:border-zinc-800 dark:bg-zinc-900">

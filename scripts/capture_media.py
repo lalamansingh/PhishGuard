@@ -7,8 +7,15 @@ Run it with the backend virtualenv, which has Playwright + Chromium + Pillow ins
     backend/.venv/bin/python scripts/capture_media.py --base-url https://<deploy-url> --readme README.md
     backend/.venv/bin/python scripts/capture_media.py --base-url http://127.0.0.1:5173 --only analytics,report --skip-video
 
+    # interactive shots + cropped Analytics / Model Lab regions only, then number the set for the README
+    backend/.venv/bin/python scripts/capture_media.py --base-url http://127.0.0.1:5173 --extras-only --skip-video
+    backend/.venv/bin/python scripts/capture_media.py --curate --out docs/media
+
 Outputs (default ``docs/media/``):
   * ``*.png``         screenshots (1440x900 viewport at deviceScaleFactor 2, full page capped, downscaled to <= 400 KB)
+                      named by shot (overview.png, report-phishing-ml.png, ...) until ``--curate`` renames them to
+                      the numbered README set (01-overview.png ... 49-mobile-report.png, see CURATED)
+  * ``screenshots.json`` (written by ``--curate``) ordered list of {file, title, section, explanation}
   * ``demo.mp4``      ~60-90 s walkthrough (H.264, yuv420p, faststart, CRF ~28, <= 15 MB)
   * ``demo.gif``      first ~25 s of the walkthrough (960 px wide, 10 fps, palettegen/paletteuse, <= 8 MB)
   * ``manifest.json`` every produced file with a caption, size, dimensions and what failed
@@ -19,6 +26,7 @@ Pages, report tabs and sidebar links are discovered from the DOM; anything missi
 from __future__ import annotations
 
 import argparse
+import base64
 import io
 import json
 import os
@@ -53,6 +61,57 @@ DEMO_URL = "http://paypal-login-verify.secure-account.xyz/update"
 TYPOSQUAT_DOMAIN = "paypal.com"
 BULK_SAMPLE = ("https://www.google.com", "https://github.com/login", "http://paypal-login-verify.secure-account.xyz/update",
                "http://www.indesx-mauve.vercel.app/", "https://www.dropbox.com/login", "https://github.com/login")
+# Inputs for the interactive shots (capture_extras). Nothing here is submitted except the one deep scan.
+SAMPLE_EMAIL = """From: "PayPal Service" <service@paypa1-support.com>
+Subject: Action required - your account has been limited
+We noticed an unusual sign-in. Verify your identity within 24 hours:
+hxxp://paypal-login-verify[.]secure-account[.]xyz/update
+Shared document (Webmail re-validation): http://www.indesx-mauve.vercel.app/
+Help Centre: https://www.paypal.com/help"""
+COMMUNITY_SAMPLE = {"url": "http://secure-paypa1-login.com/verify", "brand": "PayPal",
+                    "comment": "Received by SMS: 'Your PayPal account is on hold, verify now'"}
+PROGRESS_URL = "http://www.indesx-mauve.vercel.app/"   # a live phishing kit, deep-scanned for the progress shot
+HISTORY_PIVOT = {"threat_type": "social_engineering", "tier": "Untrusted"}
+GRAPH_DOMAIN = "metamask-docs-keec0mi8n-consensys-ddffed67.vercel.app"  # /graph?domain=...&depth=2 (about 20 nodes)
+GRAPH_FOCUS = ("Domain metamask-docs", "Domain www.indesx-mauve", "Domain ")
+WATCH_HISTORY_LABEL = "PayPal brand protection"
+# QR code (quishing test image) that encodes a phishing-style URL; decoded in the browser by jsQR.
+QR_PNG_B64 = ("iVBORw0KGgoAAAANSUhEUgAAAewAAAHsAQMAAAAq5AwjAAAABlBMVEURGCf///8AJgUnAAACIUlEQVR42u2dUW6DQAwFrV4g97+lb0AbwdrP"
+              "C+pPpFa2BlURTZifanDeGkPt+GRzAwcHBwcHBwcHBwf/d9xie12f/Oy8993y9X6Yf9lHGzj43+MWhm+qb7bnR3o8zoN3dv6s3rmjp4NfR+ph"
+              "OA8+x/lXCT9a9nEefKTzRXVJ+9R58Kl5/pQ8AvzjVwDOg7d3Xhoyv/3QtwGf4rxuobQG+z3nHzgPPifbXG+e69YVcvJccDlTcB68f7a5p/qU"
+              "f+1kwcd58L7Zxqvtr9qWX/JHqsd58Al1XhqV2rTZGzisYcGnOP8Y5lX7reDjPHj7NaxbFvlVzCPbnHm+LGZxHrx5ns/oUi+2xq9R/3OYE+fB"
+              "+zqv3XgvRV4XuXlSUOfBZ/RttlakTtps8QbnwQc4X+fKspljmWdioh7nwSesYaVvk90bffXSpcd58O7Oa54vkusy1rdvB/7y4G2dt5pe7OlW"
+              "Ef0KwHnwAc4v87UJn++skRucBx+V503aMjFXdtwmcOjPg0/J83o1NqeLba/z5HnwMdlGr8bqXbHl4Tbaz8R58LbOb/dJZba/XYcqN8biPHjn"
+              "Oq9lXLs3+iQE5ufBh61hy8ywRJpteRv7OA/eew0bVT3a8mb7E8yspB2cBx/jfHlSpeeStqxkcR58jPNHye1R7XPADOfBh+V5nSKrDwApwuM8"
+              "+JS+jdUB4zJI7/TnwW1ef55/VwEODg4ODg4ODg7eBP8GadTMWxJWrWcAAAAASUVORK5CYII=")
+EXTRA_STEMS = {"scan-text", "scan-qr", "scan-progress", "history-pivot", "graph-node",
+               "watchlist-history"}  # + the region stems below
+# Cropped regions of long pages: (file stem, card titles, include the page header, caption, group)
+ANALYTICS_REGIONS: tuple[tuple[str, tuple[str, ...], bool, str, str], ...] = (
+    ("analytics-trends", ("Scans over time", "Average risk trend", "Activity heatmap"), True,
+     "Analytics: scans over time by verdict, average risk trend and the weekday x hour activity heatmap", "Analytics"),
+    ("analytics-distributions", ("Top-level domains", "Scan sources", "Impersonation techniques", "SSL status",
+                                 "Domain age distribution", "Top failed checks"), False,
+     "Analytics: TLDs, scan sources, impersonation techniques, SSL status, domain age and top failed checks",
+     "Analytics"),
+    ("analytics-insights", ("Threat insights", "Threat types", "Reputation tiers", "Content categories"), False,
+     "Analytics: threat insights (threat types, reputation tiers, content categories)", "Analytics"),
+    ("analytics-funnel", ("Detection funnel",), False, "Analytics: detection funnel", "Analytics"),
+    ("analytics-performance", ("Performance", "Throughput", "Check error rates"), False,
+     "Analytics: scan latency percentiles, throughput and per-check error rates", "Analytics"),
+)
+MODEL_REGIONS: tuple[tuple[str, tuple[str, ...], bool, str, str], ...] = (
+    ("model-lab-comparison", ("Dataset", "Model comparison", "Metric comparison"), True,
+     "Model Lab: dataset, live model statistics and the comparison of the four classifiers", "Machine learning"),
+    ("model-lab-realistic", ("Realistic evaluation — unseen domains", "Dataset composition"), False,
+     "Model Lab: realistic evaluation on unseen domains and the dataset composition", "Machine learning"),
+    ("model-lab-curves", ("ROC curves", "Precision–recall curves"), False,
+     "Model Lab: ROC and precision-recall curves of all four models", "Machine learning"),
+    ("model-lab-confusion", ("Confusion matrices",), False, "Model Lab: confusion matrices", "Machine learning"),
+    ("model-lab-features", ("Feature importance", "Feature statistics"), False,
+     "Model Lab: feature importance and per-class feature statistics", "Machine learning"),
+)
+EXTRA_STEMS |= {r[0] for r in ANALYTICS_REGIONS + MODEL_REGIONS}
 GALLERY_START = "<!-- MEDIA-GALLERY:START -->"
 GALLERY_END = "<!-- MEDIA-GALLERY:END -->"
 METRICS_START = "<!-- ML-METRICS:START -->"
@@ -79,6 +138,8 @@ class PageSpec:
     mode: str = "full"          # full (capped full page) | sections (several scrolled viewports)
     sections: int = 1
     v2: bool = False            # optional page: its absence is reported as "skipped", not as a failure
+    crop_h: int | None = None   # cut the shot at this many CSS px (long pages whose tail adds nothing)
+    auto_crop: bool = False     # cut the shot just below the page content (short pages: no empty canvas)
 
 
 PAGES: tuple[PageSpec, ...] = (
@@ -94,26 +155,29 @@ PAGES: tuple[PageSpec, ...] = (
     PageSpec("model-lab", ("Model Lab", "Model"), ("/model",), "Model Lab", "Machine learning", mode="sections",
              sections=3),
     PageSpec("watchlist", ("Watchlist",), ("/watchlist",),
-             "Watchlist: scheduled re-checks of URLs/domains with typosquat monitoring and change alerts", "Monitoring"),
+             "Watchlist: scheduled re-checks of URLs/domains with typosquat monitoring and change alerts", "Monitoring",
+             auto_crop=True),
     PageSpec("typosquat", ("Typosquat",), ("/typosquat",),
              f"Typosquat finder: lookalike permutations of {TYPOSQUAT_DOMAIN} and which of them resolve",
-             "Threat intelligence"),
+             "Threat intelligence", crop_h=1425),
     PageSpec("community", ("Community",), ("/community",),
-             "Community: PhishTank-style reports with voting", "Community"),
+             "Community: PhishTank-style reports with voting", "Community", auto_crop=True),
     PageSpec("feeds", ("Threat Feeds", "Feeds"), ("/feeds",),
              "Threat feeds: local blocklists (OpenPhish, PhishTank, URLhaus, Phishing.Database, Phishing Army) with "
              "search and statistics", "Threat intelligence"),
     PageSpec("alerts", ("Alerts",), ("/alerts",),
-             "Alerts raised by high-risk scans, watchlist changes and community verification", "Monitoring"),
+             "Alerts raised by high-risk scans, watchlist changes and community verification", "Monitoring",
+             auto_crop=True),
     PageSpec("activity", ("Activity Log", "Activity"), ("/activity",),
-             "Activity log: audit trail of every scan, report, vote, bulk job and settings change", "Monitoring"),
+             "Activity log: audit trail of every scan, report, vote, bulk job and settings change", "Monitoring",
+             crop_h=1190),
     PageSpec("settings", ("Settings",), ("/settings",),
              "Settings: verdict thresholds, network checks, optional VirusTotal / Google Safe Browsing keys and data retention", "Administration"),
     PageSpec("graph", ("Graph", "Relationship Graph"), ("/graph",),
              "Relationship graph: scanned domains linked through shared IPs, ASNs, name servers, registrars, brands and redirects",
              "Threat intelligence", v2=True),
     PageSpec("api-guide", ("API Guide",), ("/api-guide",),
-             "API guide: copy-paste examples for the REST API", "Developer API"),
+             "API guide: copy-paste examples for the REST API", "Developer API", crop_h=1320),
 )
 
 # (key, label aliases (normalised, exact or prefix match), caption, optional)
@@ -147,8 +211,10 @@ TAB_VOCAB = ("summary", "ml", "domain", "geo", "ssl", "http", "brand", "reputati
 VIDEO_TABS = ("ml", "content", "graph", "reputation", "http", "domain", "brand", "ssl")
 VIDEO_MAX_TABS = 5
 VIDEO_SCROLL_TABS = {"ml", "http", "engines", "content"}
-GROUP_ORDER = ("Dashboard", "Scanning", "Scan report", "Analytics", "Machine learning", "Threat intelligence",
-               "Monitoring", "Community", "Developer API", "Administration", "Dark mode", "Mobile", "Video")
+GROUP_ORDER = ("Dashboard", "Scanning", "Scan report", "History & bulk", "Analytics", "Machine learning",
+               "Investigation", "Monitoring", "Community & intel", "Tracking & settings", "Responsive & themes",
+               # groups used by raw capture runs (before --curate)
+               "Threat intelligence", "Community", "Developer API", "Administration", "Dark mode", "Mobile", "Video")
 
 # ============================================================================ in-page helpers (init script)
 HELPERS_JS = r"""
@@ -357,6 +423,38 @@ CURSOR_JS = r"""
 """
 
 
+# Union of the cards with the given titles (+ the page header), for cropped "region" screenshots.
+REGION_JS = r"""
+([titles, header, pad]) => {
+  const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
+  const main = document.querySelector('main') || document.body;
+  const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const nodes = [...main.querySelectorAll('h1, h2, h3, div, span, p, summary')].filter(vis);
+  const rects = [], missing = [];
+  for (const t of titles) {
+    const want = t.toLowerCase();
+    const hit = nodes.find((e) => clean(e.textContent).toLowerCase() === want
+      && ![...e.children].some((c) => clean(c.textContent).toLowerCase() === want));
+    if (!hit) { missing.push(t); continue; }
+    const card = hit.closest('.rounded-lg.border');
+    let el = card && main.contains(card) ? card : null;
+    if (!el) el = hit.tagName === 'H2' || hit.tagName === 'H3' ? hit.parentElement : hit;
+    rects.push(el.getBoundingClientRect());
+  }
+  if (header) {
+    const h1 = main.querySelector('h1');
+    const blk = h1 && h1.parentElement && h1.parentElement.parentElement;
+    if (blk) rects.push(blk.getBoundingClientRect());
+  }
+  if (!rects.length) return null;
+  const x0 = Math.min(...rects.map((r) => r.left)) - pad, y0 = Math.min(...rects.map((r) => r.top)) - pad;
+  const x1 = Math.max(...rects.map((r) => r.right)) + pad, y1 = Math.max(...rects.map((r) => r.bottom)) + pad;
+  const x = Math.max(0, x0), y = Math.max(0, y0);
+  return { x, y, width: Math.min(innerWidth, x1) - x, height: y1 - y, missing };
+}
+"""
+
+
 # ============================================================================ helpers
 class Api:
     """Tiny JSON client for the backend (stdlib only)."""
@@ -543,6 +641,8 @@ class Config:
     show_demo_banner: bool = False
     readme_metrics: bool = False
     display_origin: str | None = None  # origin printed in page text (e.g. the API guide) instead of --base-url's
+    extras_only: bool = False   # only the interactive / region shots (capture_extras)
+    curate: bool = False        # no capture: rename shots to the numbered README set + write screenshots.json
 
 
 # ============================================================================ capture
@@ -707,9 +807,11 @@ class Capture:
     # ------------------------------------------------------------ screenshots
     def save(self, raw: bytes, name: str, caption: str, group: str, *, route: str | None, theme: str = "light",
              viewport: str = "desktop", target_width: int | None = None, warnings: list[str] | None = None,
-             extra: dict | None = None) -> Media:
+             extra: dict | None = None, crop_px: int | None = None) -> Media:
         img = Image.open(io.BytesIO(raw))
         img.load()
+        if crop_px and img.height > crop_px:  # cut empty space below the meaningful content
+            img = img.crop((0, 0, img.width, crop_px))
         data, w, h, method = optimise_png(img, self.cfg.max_kb * 1024, target_width or self.cfg.png_width)
         dest = self.out / f"{name}.png"
         dest.write_bytes(data)
@@ -735,10 +837,14 @@ class Capture:
 
     def shoot(self, page: Page, tr: NetTracker, name: str, caption: str, group: str, *, route: str | None,
               full: bool = True, theme: str = "light", viewport: str = "desktop", target_width: int | None = None,
-              extra: dict | None = None) -> Media:
+              extra: dict | None = None, crop_h: int | None = None, max_height: int | None = None,
+              settle_after: bool = True, mouse: bool = True) -> Media:
+        """Screenshot the page (full content height up to ``max_height`` CSS px, or just the viewport).
+        ``crop_h`` cuts the result at that many CSS px from the top (drops empty space below short pages)."""
         vp = page.viewport_size or {"width": 1440, "height": 900}
         warnings = self.warnings_for(page, tr)
-        self.neutral_mouse(page)
+        if mouse:
+            self.neutral_mouse(page)
         page.evaluate("window.__pg && window.__pg.scrollTo(0)")
         resized = False
         if full:
@@ -746,12 +852,13 @@ class Capture:
                 h = int(page.evaluate("window.__pg.contentHeight()"))
             except PWError:
                 h = vp["height"]
-            h = max(vp["height"], min(h, self.cfg.max_height))
+            h = max(vp["height"], min(h, max_height or self.cfg.max_height))
             if h > vp["height"] + 8:
                 page.set_viewport_size({"width": vp["width"], "height": h})
                 resized = True
                 page.wait_for_timeout(350)
-                self.settle(page, tr, timeout=10, after_ms=350)
+                if settle_after:
+                    self.settle(page, tr, timeout=10, after_ms=350)
         self.show_display_origin(page)
         try:
             raw = page.screenshot(type="png", animations="disabled", caret="hide", timeout=60_000)
@@ -759,8 +866,51 @@ class Capture:
             if resized:
                 page.set_viewport_size(vp)
                 page.wait_for_timeout(150)
+        dsf = self.dsf_of(page)
         return self.save(raw, name, caption, group, route=route, theme=theme, viewport=viewport,
-                         target_width=target_width, warnings=warnings, extra=extra)
+                         target_width=target_width, warnings=warnings, extra=extra,
+                         crop_px=int(crop_h * dsf) if crop_h else None)
+
+    @staticmethod
+    def dsf_of(page: Page) -> float:
+        try:
+            return float(page.evaluate("window.devicePixelRatio") or 1)
+        except PWError:
+            return 1.0
+
+    def shoot_region(self, page: Page, tr: NetTracker, name: str, caption: str, group: str, *, route: str | None,
+                     titles: Iterable[str], header: bool = False, pad: int = 12, theme: str = "light",
+                     extra: dict | None = None) -> Media | None:
+        """Screenshot only the cards whose titles are given (plus the page header), cropped to their union.
+
+        The viewport is stretched to the full content height first, so every card is laid out and painted."""
+        vp = page.viewport_size or {"width": 1440, "height": 900}
+        warnings = self.warnings_for(page, tr)
+        self.neutral_mouse(page)
+        page.evaluate("window.__pg && window.__pg.scrollTo(0)")
+        try:
+            h = int(page.evaluate("window.__pg.contentHeight()"))
+        except PWError:
+            h = vp["height"]
+        h = max(vp["height"], min(h, 9000))
+        page.set_viewport_size({"width": vp["width"], "height": h})
+        try:
+            page.wait_for_timeout(400)
+            self.settle(page, tr, timeout=12, after_ms=400)
+            box = page.evaluate(REGION_JS, [list(titles), header, pad])
+            if not box or box.get("width", 0) < 40 or box.get("height", 0) < 40:
+                self.fail(name, f"none of the cards {list(titles)} found")
+                return None
+            if box.get("missing"):
+                warnings.append(f"cards not found: {', '.join(box['missing'])}")
+            clip = {k: float(box[k]) for k in ("x", "y", "width", "height")}
+            self.show_display_origin(page)
+            raw = page.screenshot(type="png", animations="disabled", caret="hide", clip=clip, timeout=60_000)
+        finally:
+            page.set_viewport_size(vp)
+            page.wait_for_timeout(150)
+        return self.save(raw, name, caption, group, route=route, theme=theme, warnings=warnings,
+                         extra={**(extra or {}), "cards": list(titles)})
 
     def shoot_sections(self, page: Page, tr: NetTracker, name: str, caption: str, group: str, *, route: str,
                        max_sections: int, theme: str = "light") -> list[Media]:
@@ -778,6 +928,9 @@ class Capture:
             self.settle(page, tr, timeout=10, after_ms=300)
             titles = [c["title"] for c in info["cards"]
                       if c.get("title") and off + info["inset"] - 4 <= c["y0"] < off + info["vh"] - 60]
+            # card titles only: drop KPI numbers ("71", "51.8%") and the page heading itself
+            titles = [t.rstrip(": ") for t in titles
+                      if not re.fullmatch(r"[\d\s.,%/+\-]+", t) and norm_label(t) != norm_label(caption)]
             titles = list(dict.fromkeys(titles))[:5]
             cap = f"{caption} ({k}/{n})" + (f": {', '.join(titles)}" if titles else "")
             raw = page.screenshot(type="png", animations="disabled", caret="hide")
@@ -880,7 +1033,8 @@ class Capture:
             for name in ("analytics", "model-lab", "watchlist"):
                 self.attempt(name, lambda s=by_name[name]: self.capture_page(page, tr, s))
             self.attempt("typosquat", lambda: self.capture_typosquat(page, tr, by_name["typosquat"]))
-            for name in ("community", "feeds", "alerts", "activity", "settings", "graph", "api-guide"):
+            self.attempt("community", lambda: self.capture_community(page, tr, by_name["community"]))
+            for name in ("feeds", "alerts", "activity", "settings", "graph", "api-guide"):
                 self.attempt(name, lambda s=by_name[name]: self.capture_page(page, tr, s))
             if self.phish:
                 self.attempt("domain", lambda: self.capture_domain(page, tr))
@@ -900,7 +1054,18 @@ class Capture:
             self.shoot_sections(page, tr, spec.name, spec.caption, spec.group, route=route,
                                 max_sections=spec.sections)
         else:
-            self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route)
+            crop = self.content_crop(page) if spec.auto_crop else spec.crop_h
+            self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route, crop_h=crop)
+
+    def content_crop(self, page: Page, min_h: int = 640, pad: int = 28) -> int | None:
+        """CSS height just below the page content (at least ``min_h``, so the sidebar menu stays whole)."""
+        try:
+            bottom = page.evaluate("(() => { const m = document.querySelector('main');"
+                                   " const c = m && m.firstElementChild; if (!c) return 0;"
+                                   " return c.getBoundingClientRect().bottom + (window.__pg ? window.__pg.scrollTop() : 0); })()")
+        except PWError:
+            return None
+        return max(min_h, int(bottom) + pad) if bottom else None
 
     def capture_scan_page(self, page: Page, tr: NetTracker, spec: PageSpec) -> None:
         route, _ = self.route_for(spec)
@@ -912,7 +1077,7 @@ class Capture:
         if inp is not None:
             inp.fill(self.cfg.demo_url)
             page.wait_for_timeout(200)
-        self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route)
+        self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route, crop_h=self.content_crop(page))
 
     def capture_bulk(self, page: Page, tr: NetTracker, spec: PageSpec) -> None:
         route, _ = self.route_for(spec)
@@ -927,7 +1092,7 @@ class Capture:
                 page.wait_for_timeout(250)
         except PWError:
             pass
-        self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route)
+        self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route, crop_h=self.content_crop(page))
         jobs = self.api.try_get("/api/bulk")
         jobs = jobs.get("items") if isinstance(jobs, dict) else jobs
         if not jobs:
@@ -980,7 +1145,7 @@ class Capture:
             return
         self.settle(page, tr, timeout=15)
         self.shoot(page, tr, "api-docs", "Interactive OpenAPI (Swagger) documentation served by FastAPI at /docs",
-                   "Developer API", route="/docs")
+                   "Developer API", route="/docs", crop_h=1310)
 
     # ------------------------------------------------------------ report
     @staticmethod
@@ -1125,6 +1290,153 @@ class Capture:
                 self.attempt("mobile-report", report)
         finally:
             ctx.close()
+
+    # ------------------------------------------------------------ interactive + region shots
+    def capture_community(self, page: Page, tr: NetTracker, spec: PageSpec) -> None:
+        """Community page with the submit form filled in (not submitted) above the report tabs."""
+        route, _ = self.route_for(spec)
+        p = self.goto(page, tr, route)
+        if p.get("notFound"):
+            self.fail(spec.name, f"{route}: Page not found")
+            return
+        for sel, value in (('main input[placeholder^="https://"]', COMMUNITY_SAMPLE["url"]),
+                           ('main input[placeholder="PayPal"]', COMMUNITY_SAMPLE["brand"]),
+                           ("main textarea", COMMUNITY_SAMPLE["comment"])):
+            try:
+                loc = page.locator(sel).first
+                if loc.count():
+                    loc.fill(value)
+            except PWError:
+                pass
+        page.wait_for_timeout(200)
+        self.shoot(page, tr, spec.name, spec.caption, spec.group, route=route, crop_h=self.content_crop(page))
+
+    def capture_extras(self, browser: Browser) -> None:
+        """Views that need interaction (scan tabs, live progress, pivots, graph selection, watch history)
+        and cropped regions of the long Analytics / Model Lab pages."""
+        log("interactive + region screenshots (1440x900 @2x)", "step")
+        ctx = self.new_context(browser, theme="light")
+        page = ctx.new_page()
+        tr = NetTracker(page)
+        try:
+            self.goto(page, tr, "/")
+            if not self.nav:
+                self.discover_nav(page)
+            self.attempt("scan-text", lambda: self.capture_scan_text(page, tr))
+            self.attempt("scan-qr", lambda: self.capture_scan_qr(page, tr))
+            self.attempt("scan-progress", lambda: self.capture_scan_progress(page, tr))
+            self.attempt("history-pivot", lambda: self.capture_history_pivot(page, tr))
+            self.attempt("graph-node", lambda: self.capture_graph_node(page, tr))
+            self.attempt("watchlist-history", lambda: self.capture_watch_history(page, tr))
+            for route, specs in (("/analytics", ANALYTICS_REGIONS), ("/model", MODEL_REGIONS)):
+                if not any(self.want(s[0]) for s in specs):
+                    continue
+                self.goto(page, tr, route, timeout=40)
+                for name, titles, header, caption, group in specs:
+                    self.attempt(name, lambda n=name, t=titles, h=header, c=caption, g=group: self.shoot_region(
+                        page, tr, n, c, g, route=route, titles=t, header=h))
+        finally:
+            ctx.close()
+
+    def open_scan_tab(self, page: Page, tr: NetTracker, label: str) -> None:
+        self.goto(page, tr, "/scan")
+        page.locator("main button", has_text=label).first.click()
+        page.wait_for_timeout(300)
+
+    def capture_scan_text(self, page: Page, tr: NetTracker) -> None:
+        self.open_scan_tab(page, tr, "Email / SMS text")
+        page.locator("main textarea").first.fill(SAMPLE_EMAIL)
+        page.get_by_role("button", name=re.compile(r"Extract URLs", re.I)).click()
+        page.locator("main", has_text=re.compile(r"\d+ URL\(s\) found")).first.wait_for(timeout=20_000)
+        self.settle(page, tr, timeout=10)
+        self.shoot(page, tr, "scan-text", "Email / SMS text: paste a message and PhishGuard extracts (and re-fangs) "
+                   "every URL in it", "Scanning", route="/scan#text", crop_h=self.content_crop(page))
+
+    def capture_scan_qr(self, page: Page, tr: NetTracker) -> None:
+        assert self.tmp is not None
+        qr = self.tmp / "quishing-qr.png"
+        qr.write_bytes(base64.b64decode(QR_PNG_B64))
+        self.open_scan_tab(page, tr, "QR code")
+        page.locator('main input[type="file"]').first.set_input_files(str(qr))
+        page.locator("main", has_text="Decoded content").first.wait_for(timeout=15_000)
+        page.wait_for_timeout(400)
+        self.shoot(page, tr, "scan-qr", "QR code (quishing): the image is decoded locally in the browser and the "
+                   "embedded URL can be scanned", "Scanning", route="/scan#qr", crop_h=self.content_crop(page))
+
+    def capture_scan_progress(self, page: Page, tr: NetTracker) -> None:
+        """Deep scan through the UI. The POST /api/scan request is held for a few seconds so the live
+        analysis-pipeline card can be captured mid-way (the scan itself is real and is stored)."""
+        self.goto(page, tr, "/scan")
+        inp = self.find_url_input(page)
+        if inp is None:
+            raise RuntimeError("no URL input on the scan page")
+        inp.fill(PROGRESS_URL)
+        held: list = []
+        pat = re.compile(r".*/api/scan(\?.*)?$")
+
+        def hold(route, request) -> None:
+            if request.method == "POST":
+                held.append(route)
+            else:
+                route.continue_()
+        page.route(pat, hold)
+        try:
+            page.locator('main form button[type="submit"]').first.click()
+            page.wait_for_timeout(4700)  # the pipeline card advances one step every 0.9 s on a deep scan
+            self.shoot(page, tr, "scan-progress", "Scan in progress: the analysis pipeline steps (lexical, ML, DNS, "
+                       "WHOIS, SSL, HTTP, brand, reputation) while a deep scan runs", "Scanning", route="/scan",
+                       full=False, crop_h=self.content_crop(page), settle_after=False, mouse=False)
+        finally:
+            for r in held:
+                try:
+                    r.continue_()
+                except PWError:
+                    pass
+            page.unroute(pat)
+        # let the held scan finish and open its report, so the run leaves no request in flight
+        page.wait_for_url(re.compile(r".*/scans/\d+.*"), timeout=int(self.cfg.scan_timeout * 1000))
+        self.settle(page, tr, timeout=30)
+        # (no Screenshot-tab shot: image.thum.io answers "Image not authorized" without a paid account)
+
+    def capture_history_pivot(self, page: Page, tr: NetTracker) -> None:
+        route = "/history?" + urllib.parse.urlencode(HISTORY_PIVOT)
+        self.goto(page, tr, route)
+        self.shoot(page, tr, "history-pivot", "History with pivot filters (threat type, trust tier) as removable "
+                   "chips, synced to the URL", "History & bulk", route=route, max_height=1150)
+
+    def capture_graph_node(self, page: Page, tr: NetTracker) -> None:
+        route = "/graph?" + urllib.parse.urlencode({"domain": GRAPH_DOMAIN, "depth": 2})
+        self.goto(page, tr, route, timeout=40)
+        page.wait_for_timeout(3000)  # let the force layout cool down
+        node = None
+        for prefix in GRAPH_FOCUS:
+            loc = page.locator(f'main svg g[role="button"][aria-label^="{prefix}"]').first
+            if loc.count():
+                node = loc
+                break
+        if node is None:
+            raise RuntimeError("no graph node to select")
+        node.focus()
+        node.press("Enter")
+        page.evaluate("document.activeElement && document.activeElement.blur()")
+        page.wait_for_timeout(600)
+        self.settle(page, tr, timeout=15)
+        self.shoot(page, tr, "graph-node", "Relationship graph with a domain selected: its neighbours are highlighted "
+                   "and the side panel lists details and pivots", "Investigation", route=route, max_height=1300,
+                   crop_h=self.content_crop(page, min_h=900))
+
+    def capture_watch_history(self, page: Page, tr: NetTracker) -> None:
+        self.goto(page, tr, "/watchlist")
+        row = page.locator("main tr", has_text=WATCH_HISTORY_LABEL).first
+        if not row.count():
+            row = page.locator("main tbody tr").first
+        row.get_by_role("button", name=re.compile(r"History")).click()
+        page.get_by_text(re.compile(r"^History · ")).first.wait_for(timeout=10_000)
+        page.get_by_text("Risk over time").first.wait_for(timeout=15_000)
+        self.settle(page, tr, timeout=15)
+        page.wait_for_timeout(500)
+        self.shoot(page, tr, "watchlist-history", "Watchlist history drawer: risk over time, every check and the "
+                   "resolving typosquats of the monitored domain", "Monitoring", route="/watchlist", full=False)
 
     # ------------------------------------------------------------ element helpers
     def find_input(self, page: Page, pred: Callable[[dict], bool]):
@@ -1302,6 +1614,8 @@ class Capture:
         """Was this shot (file stem or failure name) part of this run?"""
         if kind in ("video", "gif") or name.startswith("demo"):
             return not self.cfg.skip_video and (self.cfg.video_only or self.want("demo"))
+        if self.cfg.extras_only and name not in EXTRA_STEMS:
+            return False
         return not self.cfg.video_only and self.want(name)
 
     def write_manifest(self) -> dict:
@@ -1579,14 +1893,313 @@ class DemoDriver:
         self.marks["end"] = self.now()
 
 
+# ============================================================================ curated README set (--curate)
+SECTIONS = ("Dashboard", "Scanning", "Scan report", "History & bulk", "Analytics", "Machine learning", "Investigation",
+            "Monitoring", "Community & intel", "Tracking & settings", "Responsive & themes")
+# (final file, source stem from a capture run, title, section, explanation) in README order.
+CURATED: tuple[tuple[str, str, str, str, str], ...] = (
+    ("01-overview.png", "overview", "Overview dashboard", "Dashboard",
+     "The landing page summarises detection activity for the selected time range: total, phishing and legitimate "
+     "scans, detection rate, average trust and risk scores, blacklist hits and impersonated brands. Charts of scans "
+     "over time, the verdict split, the risk-score distribution, top impersonated brands and hosting countries sit "
+     "next to a live scan feed, model health and recent alerts, so the current phishing picture is visible at a glance."),
+    ("02-scan-url.png", "scan", "Scan a single URL", "Scanning",
+     "The Scan page takes one URL and runs the full analysis pipeline. The Deep scan toggle adds live DNS, WHOIS, SSL, "
+     "HTTP and page-content checks on top of the instant lexical and ML analysis, and the example links let a reviewer "
+     "try a legitimate site, a typosquatted PayPal URL and a raw-IP banking page in one click."),
+    ("03-scan-email-sms.png", "scan-text", "Extract URLs from an email or SMS", "Scanning",
+     "A suspicious email or SMS is pasted as text and PhishGuard extracts every link in it, including defanged forms "
+     "such as hxxp:// and [.]. The extracted URLs can be ticked and scanned in one go, which matches how phishing "
+     "really arrives: inside messages rather than as bare links."),
+    ("04-scan-qr.png", "scan-qr", "Scan a QR code (quishing)", "Scanning",
+     "A QR-code image is decoded locally in the browser with jsQR, so the image is never uploaded, and the embedded "
+     "URL is shown before anything is opened. One click then scans the decoded link, which protects against QR-code "
+     "phishing on posters, invoices and parcel notices."),
+    ("05-scan-progress.png", "scan-progress", "Scan in progress", "Scanning",
+     "While a deep scan runs, the analysis-pipeline card ticks off each stage: lexical analysis, ML prediction, DNS, "
+     "WHOIS, SSL/TLS, HTTP and content, brand impersonation and reputation. It makes the multi-signal design visible "
+     "and tells the user what is being checked before the report opens."),
+    ("06-report-summary.png", "report-phishing-summary", "Report: summary, AI summary and factors", "Scan report",
+     "The report header shows the 0-100 risk gauge, verdict, trust score and tier, threat type, engines flagged, ML "
+     "probability and scan duration for a live phishing kit hosted on vercel.app. The Summary tab adds a plain-English "
+     "AI summary, the negative and positive factors behind the score, the score breakdown (60% ML + 40% heuristics) "
+     "and every security check, so the verdict can be explained instead of being a black box."),
+    ("07-report-ml-explanation.png", "report-phishing-ml", "Report: ML explanation", "Scan report",
+     "The ML Explanation tab shows the primary model (Random Forest), its phishing probability and how many of the "
+     "four classifiers agree. Signed feature contributions show which URL properties pushed the prediction towards "
+     "phishing or safe, and the table lists every lexical feature extracted from the URL."),
+    ("08-report-domain-whois.png", "report-phishing-domain", "Report: domain and WHOIS", "Scan report",
+     "The Domain tab splits the hostname into subdomain, registered domain and TLD and shows WHOIS data (registrar, "
+     "created, updated and expiry dates) and DNS records. Domain age is a strong phishing signal; here the registered "
+     "domain is old because the kit sits on a free hosting platform, which the subdomain and hosting checks expose."),
+    ("09-report-geo-hosting.png", "report-phishing-geo", "Report: geo and hosting", "Scan report",
+     "Geo & Hosting resolves the server IP to its country, city, ASN, organisation and ISP, flags hosting/datacenter "
+     "networks and pins the location on an OpenStreetMap map. This helps to spot phishing pages on cheap hosting and "
+     "to group sites that share infrastructure."),
+    ("10-report-ssl.png", "report-phishing-ssl", "Report: SSL certificate", "Scan report",
+     "The SSL tab shows the certificate issuer, subject, protocol, validity window, days left and SANs, and explains "
+     "why validation failed (here a hostname mismatch). Free, short-lived or mismatched certificates are common on "
+     "phishing sites, so the certificate feeds into the heuristic score."),
+    ("11-report-http.png", "report-phishing-http", "Report: HTTP analysis", "Scan report",
+     "The HTTP tab follows the redirect chain hop by hop, shows the response details and which of six security "
+     "headers are present, and detects technologies and suspicious JavaScript (obfuscated eval, exfiltration to a "
+     "Telegram bot, visitor geo-lookup). The page-content counters (forms, password fields, external scripts) reveal "
+     "a credential-harvesting login form."),
+    ("12-report-brand.png", "report-phishing-brand", "Report: brand impersonation", "Scan report",
+     "For a scan that impersonates MetaMask, the Brand tab names the targeted brand, the technique (the brand used as "
+     "a subdomain of an unrelated vercel.app domain) and the similarity to the genuine brand domain. The table "
+     "explains the tricks attackers use to look legitimate: typosquats, homoglyphs, combosquats, punycode, brand in "
+     "the path or in the page content."),
+    ("13-report-reputation.png", "report-phishing-reputation", "Report: reputation and detection engines",
+     "Scan report",
+     "The Reputation tab lists every detection engine with its type and result: five local threat feeds (OpenPhish, "
+     "URLhaus, Phishing.Database, PhishTank, Phishing Army), five DNS blocklists and the PhishGuard ML engine. It also "
+     "shows which blacklists contain the URL and the community verdict with its votes, so the ML score is "
+     "cross-checked against independent sources."),
+    ("14-report-content.png", "report-phishing-content", "Report: page content", "Scan report",
+     "The Content tab classifies the live page (here a login page with 95% confidence), detects its language and "
+     "checks whether the domain is parked. Category scores and the tracker list explain what the page is trying to "
+     "do, for example harvesting webmail credentials."),
+    ("15-report-resources.png", "report-phishing-resources", "Report: resources", "Scan report",
+     "The Resources tab counts every script, style, image, frame and form the page loads and the domains it "
+     "contacts. A login page that pulls all of its resources from third-party domains is typical of a copied "
+     "phishing kit."),
+    ("16-report-source.png", "report-phishing-source", "Report: page source", "Scan report",
+     "The Source tab shows the stored HTML as plain text with line numbers, search, wrapping and copy; the page is "
+     "never rendered. The phishing kit's markup and scripts can be inspected safely without visiting the live site."),
+    ("17-report-graph.png", "report-phishing-graph", "Report: relationship graph", "Scan report",
+     "The Graph tab draws the infrastructure around the scanned domain up to two hops: its URL, IP address, ASN, "
+     "name servers, registrar, country and the other scanned domains that share them. Shared infrastructure links a "
+     "single phishing site to related campaigns."),
+    ("18-report-timeline.png", "report-phishing-timeline", "Report: timeline", "Scan report",
+     "The Timeline tab lists the events recorded for this scan and its domain (scans, community reports, watchlist "
+     "runs and alerts), each with expandable details. It shows how a phishing site was detected, reported and "
+     "monitored over time."),
+    ("19-report-legitimate.png", "report-legit-summary", "Report: legitimate (Trusted) site", "Scan report",
+     "For https://github.com the gauge shows risk 3/100, tier Trusted, 0 of 11 engines flagged and a 4.3% ML "
+     "phishing probability. The AI summary and the positive factors (official domain, valid certificate, not on any "
+     "feed) show that safe verdicts are explained as clearly as phishing ones, which keeps false positives "
+     "understandable."),
+    ("20-history-pivot-filters.png", "history-pivot", "History with pivot filters", "History & bulk",
+     "Scan history combines search, verdict, source, TLD, risk-range and date filters with advanced pivots (IP, ASN, "
+     "registrar, content category, threat type, trust tier). Active filters appear as removable chips and are kept "
+     "in the URL, so a view such as 'all untrusted social-engineering scans' can be shared or exported to CSV/JSON."),
+    ("21-bulk-scan.png", "bulk", "Bulk scan", "History & bulk",
+     "Up to 500 URLs are pasted or uploaded as a CSV/TXT file; duplicates are removed and the job runs in the "
+     "background. The jobs table tracks the progress and verdict split of every job."),
+    ("22-bulk-job-detail.png", "bulk-job", "Bulk job results", "History & bulk",
+     "A finished bulk job shows its progress, the verdict distribution and every URL with its verdict, risk score, "
+     "impersonated brand, blacklist status and scan time, with CSV/JSON export. A list of reported links can be "
+     "triaged in one pass, and phishing URLs that are on no blacklist yet are still caught by the model."),
+    ("23-analytics-trends.png", "analytics-trends", "Analytics: trends and activity heatmap", "Analytics",
+     "Scans over time are stacked by verdict next to the average risk trend, and the heatmap shows scan activity by "
+     "weekday and hour (UTC). Together they show when phishing activity peaks and whether risk is rising."),
+    ("24-analytics-distributions.png", "analytics-distributions", "Analytics: distributions", "Analytics",
+     "Charts break the scans down by top-level domain, scan source (web, bulk, extension, API, watch, text, QR), "
+     "impersonation technique, SSL status, domain age and the checks that fail most often. They show which signals "
+     "separate phishing from legitimate sites in the collected data."),
+    ("25-analytics-threat-insights.png", "analytics-insights", "Analytics: threat insights", "Analytics",
+     "Threat types (Safe Browsing-style), reputation tiers and content categories summarise what kind of threats "
+     "were found. Clicking a slice or bar opens the matching scans in History."),
+    ("26-analytics-funnel.png", "analytics-funnel", "Analytics: detection funnel", "Analytics",
+     "The funnel shows how many scans pass each detection stage: scanned, reachable, login/password form, brand "
+     "impersonation, listed in a feed and phishing verdict. It shows how the individual signals narrow down to the "
+     "final phishing verdicts."),
+    ("27-analytics-performance.png", "analytics-performance", "Analytics: performance", "Analytics",
+     "P50, P95, P99 and maximum scan latency, the error count, hourly throughput and per-check error rates measure "
+     "how fast and reliable the analysis engine is. The median deep scan, with all network checks, finishes in "
+     "under two seconds."),
+    ("28-model-lab-comparison.png", "model-lab-comparison", "Model Lab: dataset and model comparison",
+     "Machine learning",
+     "The Model Lab shows the training dataset (146,364 URLs from PhiUSIIL, PhishTank, Phishing.Database, OpenPhish "
+     "and Tranco, balanced 50/50), live prediction statistics and a comparison of Logistic Regression, Decision "
+     "Tree, Random Forest and SVM on accuracy, precision, recall, F1, ROC-AUC, 5-fold cross-validation and timing. "
+     "Random Forest has the best F1 (85.6%) and ROC-AUC (0.945) and is used for scoring."),
+    ("29-model-lab-realistic-evaluation.png", "model-lab-realistic", "Model Lab: realistic evaluation",
+     "Machine learning",
+     "Besides the stratified test split, every model is evaluated on 4,000 held-out URLs from campaigns and domains "
+     "never seen in training (PhishTank and Phishing.Database phishing, Tranco deep links). F1, precision, recall, "
+     "HTTPS recall and false-positive rate on this set give an honest estimate of real-world accuracy, and the "
+     "composition card shows where the training URLs came from."),
+    ("30-model-lab-roc-pr.png", "model-lab-curves", "Model Lab: ROC and precision-recall curves", "Machine learning",
+     "ROC and precision-recall curves of the four classifiers on the test split, with the best model drawn thicker. "
+     "They show the trade-off between catching phishing and raising false alarms at every threshold."),
+    ("31-model-lab-confusion-matrices.png", "model-lab-confusion", "Model Lab: confusion matrices",
+     "Machine learning",
+     "One confusion matrix per model counts true/false positives and negatives on the 29,272-URL test split. Missed "
+     "phishing (false negatives) and blocked legitimate sites (false positives) are the two errors that matter in "
+     "practice."),
+    ("32-model-lab-feature-importance.png", "model-lab-features", "Model Lab: feature importance", "Machine learning",
+     "The top 20 Random Forest features and the mean of each feature in phishing vs legitimate samples explain what "
+     "the model learned. Subdomain length, free-hosting platforms and hostname length matter most, and phishing "
+     "hostnames are much longer on average (25.3 vs 16.5 characters)."),
+    ("33-domain-intelligence.png", "domain", "Domain intelligence", "Investigation",
+     "The Domain page aggregates every scan of one domain: scan count, average risk, latest verdict, first and last "
+     "seen, a risk trend and the latest IP, hosting, registrar, domain age and SSL issuer. From here the domain can "
+     "be watched, re-scanned or checked for typosquats."),
+    ("34-graph-node-selected.png", "graph-node", "Relationship graph with a node selected", "Investigation",
+     "The Graph page links scanned domains through shared IPs, ASNs, name servers, registrars, brands and redirects, "
+     "here centred on a MetaMask phishing domain at depth 2. Selecting the domain highlights its neighbours and opens "
+     "a side panel with its verdict, risk, connections and pivots, which helps to uncover campaigns that reuse the "
+     "same infrastructure."),
+    ("35-typosquat-paypal.png", "typosquat", "Typosquat finder (paypal.com)", "Investigation",
+     "dnstwist-style permutations of paypal.com (omission, transposition, homoglyph, TLD swap, dictionary words and "
+     "more, 13 techniques) are generated and checked in DNS. Here 50 of the 60 checked lookalikes resolve, each with "
+     "its IP and a one-click scan, which shows how many domains could be used to impersonate a single brand."),
+    ("36-watchlist.png", "watchlist", "Watchlist", "Monitoring",
+     "URLs and domains are re-checked automatically on an interval; each target shows its last verdict, risk, change "
+     "and alert count, and brand domains can also be monitored for newly resolving typosquats. A verdict change or a "
+     "new lookalike raises an alert."),
+    ("37-watchlist-history.png", "watchlist-history", "Watchlist history", "Monitoring",
+     "The history drawer of a monitored target charts its risk over time against the suspicious (35) and phishing "
+     "(65) thresholds and lists every check with a link to its report. For a brand domain such as paypal.com it also "
+     "lists the resolving typosquats, the lookalikes most likely to be used against that brand."),
+    ("38-alerts.png", "alerts", "Alerts", "Monitoring",
+     "Alerts are raised by high-risk scans, watchlist changes, typosquat baselines and community verification, with "
+     "severity filters and read/unread state. Each alert links to the scan or watchlist entry that caused it."),
+    ("39-community.png", "community", "Community reports", "Community & intel",
+     "Anyone can report a suspicious URL with a label, targeted brand and comment; reports are verified "
+     "PhishTank-style at +3 net phishing votes and rejected at -3. The Pending, Verified and Rejected tabs show the "
+     "reporter, status and votes, and a verified report raises the risk score of that URL."),
+    ("40-threat-feeds.png", "feeds", "Threat feeds", "Community & intel",
+     "PhishGuard keeps local copies of five public blocklists (OpenPhish, URLhaus, Phishing.Database, PhishTank and "
+     "Phishing Army, about 657,000 entries) that can be refreshed on demand. Charts show the entries per feed, top "
+     "TLDs and most targeted brands, and any URL, domain or brand can be searched across all feeds."),
+    ("41-activity-log.png", "activity", "Activity log", "Tracking & settings",
+     "The activity log is an audit trail of scans, alerts, watchlist runs, community reports, votes, bulk jobs, "
+     "typosquat searches and settings changes, filterable by event type and with expandable details. It makes every "
+     "action of the system traceable."),
+    ("42-settings.png", "settings", "Settings", "Tracking & settings",
+     "Verdict thresholds (35 suspicious, 65 phishing) are set with sliders and a live preview; other options switch "
+     "network checks and page screenshots, set the check timeout and data retention and store optional VirusTotal / "
+     "Google Safe Browsing keys. The About section names the project, student, guide and institute and shows the "
+     "seven-step system workflow."),
+    ("43-api-guide.png", "api-guide", "API guide", "Tracking & settings",
+     "The API guide lists the REST endpoints with copy-paste curl examples for scanning, history, export, bulk jobs, "
+     "URL extraction, typosquats, community reports and the watchlist. Any tool or script can use the same engine as "
+     "the dashboard, for example to check links from a mail gateway."),
+    ("44-swagger-docs.png", "api-docs", "Swagger / OpenAPI docs", "Tracking & settings",
+     "FastAPI serves interactive OpenAPI documentation at /docs, where every endpoint can be tried from the browser. "
+     "The description documents the scoring formula: risk = 0.6 x ML probability x 100 + 0.4 x heuristic score, "
+     "raised on a blacklist hit or a verified community report."),
+    ("45-dark-overview.png", "dark-overview", "Dark mode: overview", "Responsive & themes",
+     "Every page has a dark theme (light, dark or follow the system). Cards, charts and tables keep their contrast, "
+     "which suits long analysis sessions."),
+    ("46-dark-report.png", "dark-report", "Dark mode: scan report", "Responsive & themes",
+     "The phishing report in dark mode keeps the risk gauge, verdict chips, tabs and AI summary readable. The colour "
+     "coding is the same as in the light theme, so red still means danger."),
+    ("47-dark-analytics.png", "dark-analytics", "Dark mode: analytics", "Responsive & themes",
+     "Analytics in dark mode re-colours the stacked scans-over-time chart, the average risk trend and the activity "
+     "heatmap for a dark background. Verdict colours stay consistent across both themes."),
+    ("48-mobile-overview.png", "mobile-overview", "Mobile: overview", "Responsive & themes",
+     "On a 390 px phone screen the sidebar collapses into a menu and the KPI cards stack in two columns. The "
+     "dashboard stays usable on small screens without horizontal scrolling."),
+    ("49-mobile-report.png", "mobile-report", "Mobile: scan report", "Responsive & themes",
+     "On a phone the report's action buttons wrap and the risk gauge, verdict and key numbers stack vertically. A "
+     "suspicious link received by SMS can be checked on the same device."),
+)
+FEATURED = ("01-overview", "02-scan-url", "06-report-summary", "07-report-ml-explanation", "13-report-reputation",
+            "17-report-graph", "23-analytics-trends", "28-model-lab-comparison", "34-graph-node-selected",
+            "20-history-pivot-filters", "35-typosquat-paypal", "37-watchlist-history")
+
+
+def media_entry(p: Path) -> dict:
+    """Basic manifest entry for a demo video / GIF / poster that this script did not produce."""
+    e: dict[str, Any] = {"file": p.name, "caption": "Demo walkthrough", "group": "Video", "route": None,
+                         "theme": "light", "viewport": "desktop", "bytes": p.stat().st_size, "warnings": [], "extra": {}}
+    ext = p.suffix.lower()
+    e["kind"] = ("video" if ext in (".mp4", ".webm") else "gif" if ext == ".gif"
+                 else "poster" if ext in (".png", ".jpg", ".jpeg") else "subtitles")
+    if ext in (".png", ".jpg", ".jpeg", ".gif"):
+        try:
+            with Image.open(p) as im:
+                e["width"], e["height"] = im.size
+        except OSError:
+            pass
+    ffprobe = shutil.which("ffprobe") or ("/opt/homebrew/bin/ffprobe" if Path("/opt/homebrew/bin/ffprobe").exists() else None)
+    if ffprobe and ext in (".mp4", ".webm", ".gif"):
+        r = subprocess.run([ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
+                            "stream=width,height,codec_name:format=duration", "-of", "json", str(p)],
+                           capture_output=True, text=True)
+        try:
+            info = json.loads(r.stdout or "{}")
+            st = (info.get("streams") or [{}])[0]
+            e.update(width=st.get("width"), height=st.get("height"))
+            dur = float((info.get("format") or {}).get("duration") or 0)
+            if dur:
+                e["extra"] = {"duration_s": round(dur, 1), "codec": st.get("codec_name")}
+                e["caption"] = (f"Demo walkthrough ({dur:.0f} s)" if e["kind"] == "video"
+                                else f"Animated preview ({dur:.0f} s)")
+        except (ValueError, TypeError):
+            pass
+    if e["kind"] == "poster":
+        e["caption"] = "Poster frame of the demo video"
+    return e
+
+
+def curate(out: Path) -> dict:
+    """Rename capture-run stems to the numbered README set, delete superseded PNGs, write screenshots.json and
+    update manifest.json. Files the video step owns (demo.*, demo-*) are never touched."""
+    mf = out / "manifest.json"
+    manifest = json.loads(mf.read_text()) if mf.exists() else {"files": []}
+    entries = {Path(f["file"]).stem: f for f in manifest.get("files", []) if isinstance(f, dict) and "file" in f}
+    files, gallery, missing = [], [], []
+    for order, (final, stem, title, section, explanation) in enumerate(CURATED, start=1):
+        src, dst = out / f"{stem}.png", out / final
+        if src.exists():
+            src.replace(dst)
+        if not dst.exists():
+            missing.append(final)
+            continue
+        e = dict(entries.get(stem) or entries.get(Path(final).stem) or {})
+        with Image.open(dst) as im:
+            w, h = im.size
+        e.update({"file": final, "title": title, "section": section, "group": section, "order": order,
+                  "kind": "screenshot", "width": w, "height": h, "bytes": dst.stat().st_size,
+                  "caption": e.get("caption") or title})
+        e.setdefault("theme", "dark" if "dark-" in final else "light")
+        e.setdefault("viewport", "mobile" if "mobile-" in final else "desktop")
+        files.append(e)
+        gallery.append({"file": final, "title": title, "section": section, "explanation": explanation})
+    keep = {g["file"] for g in gallery}
+    removed = []
+    for p in sorted(out.glob("*.png")):
+        if p.name not in keep and not p.name.startswith("demo"):
+            p.unlink()
+            removed.append(p.name)
+    video = [f for f in manifest.get("files", []) if isinstance(f, dict) and str(f.get("file", "")).startswith("demo")
+             and (out / f["file"]).exists()]
+    have = {f["file"] for f in video}
+    for p in sorted(out.glob("demo*")):  # media owned by the video step: keep (or add) a basic entry
+        if p.name not in have and p.suffix.lower() in (".mp4", ".gif", ".webm", ".png", ".jpg", ".jpeg", ".vtt", ".srt"):
+            video.append(media_entry(p))
+    for f in video:
+        if (out / f["file"]).exists():
+            f["bytes"] = (out / f["file"]).stat().st_size
+    manifest.update({
+        "curated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "sections": list(SECTIONS),
+        "screenshots_index": "screenshots.json",
+        "files": files + video,
+        "failed": [f for f in manifest.get("failed", []) if isinstance(f, dict)
+                   and str(f.get("name", "")).startswith("demo")],
+        "skipped": [],
+    })
+    (out / "screenshots.json").write_text(json.dumps(gallery, indent=2, ensure_ascii=False) + "\n")
+    mf.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+    total = sum(f["bytes"] for f in files)
+    log(f"curated {len(files)} screenshots ({human(total)}); removed {len(removed)} superseded PNGs", "ok")
+    if missing:
+        log(f"missing (not captured yet): {', '.join(missing)}", "warn")
+    return manifest
+
+
 # ============================================================================ README sync
-FEATURED = ("overview", "scan", "report-phishing-summary", "report-phishing-ml", "report-phishing-reputation",
-            "report-phishing-graph", "analytics-1", "model-lab-1", "graph", "history", "typosquat", "watchlist")
 
 
 def _cell(f: dict, media_path: str, cols: int) -> str:
     src = f"{media_path}/{f['file']}"
-    cap = (f.get("caption") or f["file"]).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    cap = (f.get("title") or f.get("caption") or f["file"]).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return (f'    <td width="{100 // cols}%" valign="top"><a href="{src}"><img src="{src}" alt="{cap}"></a>'
             f"<br><sub>{cap}</sub></td>")
 
@@ -1739,6 +2352,12 @@ def parse_args(argv: list[str] | None = None) -> Config:
     ap.add_argument("--keep-raw", action="store_true", help="also keep the raw Playwright .webm (demo-raw.webm)")
     ap.add_argument("--display-origin", default=None,
                     help="origin to show in page text when capturing on another port, e.g. http://localhost:5173")
+    ap.add_argument("--extras-only", action="store_true",
+                    help="only the interactive shots (scan tabs, scan progress, pivots, graph selection, watch "
+                         "history) and the cropped Analytics / Model Lab regions")
+    ap.add_argument("--curate", action="store_true",
+                    help="no capture: rename the shots in --out to the numbered README set (CURATED), delete "
+                         "superseded PNGs, write screenshots.json and update manifest.json")
     ap.add_argument("--headed", action="store_true", help="show the browser")
     ap.add_argument("-v", "--verbose", action="store_true", help="print tracebacks")
     a = ap.parse_args(argv)
@@ -1752,7 +2371,7 @@ def parse_args(argv: list[str] | None = None) -> Config:
         readme=Path(a.readme).expanduser().resolve() if a.readme else None, readme_media_path=a.readme_media_path,
         gallery_only=a.gallery_only, keep_raw=a.keep_raw, all_tabs=a.all_tabs, verbose=a.verbose,
         show_demo_banner=a.show_demo_banner, readme_metrics=a.readme_metrics,
-        display_origin=a.display_origin)
+        display_origin=a.display_origin, extras_only=a.extras_only, curate=a.curate)
 
 
 def media_path_for(cfg: Config) -> str:
@@ -1765,6 +2384,11 @@ def media_path_for(cfg: Config) -> str:
 def main(argv: list[str] | None = None) -> int:
     cfg = parse_args(argv)
     metrics_file = METRICS_FILE if cfg.readme_metrics else None
+    if cfg.curate:
+        manifest = curate(cfg.out)
+        if cfg.readme:
+            update_readme(cfg.readme, manifest, media_path_for(cfg), metrics_file)
+        return 0
     if cfg.gallery_only:
         if not cfg.readme:
             sys.exit("--gallery-only needs --readme")
@@ -1782,12 +2406,14 @@ def main(argv: list[str] | None = None) -> int:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=not cfg.headed)
             try:
-                if not cfg.video_only:
+                if not cfg.video_only and not cfg.extras_only:
                     cap.capture_desktop(browser)
                     if any(cap.want(n) for n in ("dark-overview", "dark-report", "dark-analytics")):
                         cap.capture_dark(browser)
                     if any(cap.want(n) for n in ("mobile-overview", "mobile-report")):
                         cap.capture_mobile(browser)
+                if not cfg.video_only:
+                    cap.capture_extras(browser)
                 if not cfg.skip_video and (cap.want("demo") or cfg.video_only):
                     cap.record_video(browser)
             finally:

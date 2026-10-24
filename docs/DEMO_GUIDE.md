@@ -10,6 +10,7 @@ A script for presenting PhishGuard in a viva or project review: what to open, wh
 4. **Warm up** with one quick scan, so the models and the Tranco index are already loaded when the examiner watches.
 5. **Open these tabs in advance**: Overview, Scan, Model Lab, Threat Feeds.
 6. **Copy one live-feed URL** (see Scan 3 below) into a notepad. Never open it in your own browser.
+7. **Keep a fallback ready:** if the network or the laptop fails, play the narrated demo video ([`docs/media/demo.mp4`](media/demo.mp4)) or walk through the screenshots in the [README](../README.md#-screenshots).
 
 ## The 5-minute script
 
@@ -29,7 +30,7 @@ A script for presenting PhishGuard in a viva or project review: what to open, wh
 http://paypal-login-verify.secure-account.xyz/update
 ```
 
-On the **Scan** page, paste it, keep **Deep scan** on and click Scan. Then point out:
+On the **Scan** page, paste it, keep **Deep scan** on and click **Analyse URL**. Then point out:
 
 - **Header**: the risk gauge, the verdict (Phishing), the trust score (100 - risk), the tier (Untrusted) and the threat type (social engineering).
 - **Summary tab**: the plain-English summary, the **score breakdown** (ML part, heuristic part), the negative factors, and every check grouped into lexical, domain, network, SSL, content, brand and reputation.
@@ -58,7 +59,7 @@ https://github.com/login
    - **Brand tab**: the look-alike technique.
    - **Content / Resources / Source tabs** (if the page is still online): the page category, login forms, trackers, the contacted domains and the stored HTML.
    - **Graph / Timeline tabs**: the IP, ASN, registrar and name servers, and the events for this scan.
-4. Optional: in the **Reputation** tab, click the "phishing" vote button to show the community workflow. The vote creates or joins a community report, which is verified at a net +3 votes; after that the URL's risk is at least 85.
+4. Optional: in the **Reputation** tab, click the **Phishing** vote button under "Community verdict" to show the community workflow. The vote files a community report for this URL (your label counts as its first vote). Other users vote on it on the **Community** page; at a net +3 phishing votes it is verified, and from then on the URL's risk is at least 85.
 
 ## Explaining the ML metrics (Model Lab)
 

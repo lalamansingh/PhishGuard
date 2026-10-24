@@ -343,7 +343,7 @@ export default function ScanPage() {
       {!scan.isPending && !scan.isSuccess && (
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            ['ML ensemble', 'Logistic Regression, Random Forest, Gradient Boosting and SVM trained on lexical URL features.'],
+            ['ML models', 'Logistic Regression, Decision Tree, Random Forest and SVM trained on 44 lexical URL features; the best (Random Forest) gives the score.'],
             ['Live network checks', 'DNS, WHOIS age, SSL certificate, HTTP redirects, security headers and page content.'],
             ['Threat intelligence', 'OpenPhish / PhishTank / URLhaus feeds plus community reports and brand detection.'],
           ].map(([t, d]) => (
