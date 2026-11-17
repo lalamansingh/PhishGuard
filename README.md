@@ -19,7 +19,6 @@
 
 PhishGuard tells you whether a website is likely to be a phishing site, and why. It reads the URL with four trained machine-learning models (Logistic Regression, Decision Tree, Random Forest and SVM, with the best one, Random Forest, driving the score). At the same time it runs 50+ live checks on the domain, the certificate, the page and local threat-intelligence feeds, and it combines everything into a **0-100 risk score** with a **Legitimate / Suspicious / Phishing** verdict and the reasons behind it. A React dashboard, a documented REST API and a Chrome extension all use the same engine. The dashboard adds analytics, a model-comparison lab, monitoring and community reporting.
 
-> 🎓 **B.Tech mini project** by **Ayushi Tiwari**, under the guidance of **Mr. Vishal Gupta**. Department of Computer Science & Engineering, Lloyd Institute of Engineering & Technology, Greater Noida. Affiliated to Dr. A.P.J. Abdul Kalam Technical University (AKTU), Lucknow.
 
 > [!NOTE]
 > The live demo runs in **demo mode** on a bundled snapshot of demo data. Anything you add (scans, reports, watchlist items) is reset when the serverless function restarts, and watchlist checks run once a day through a Vercel Cron job. Run it locally for the full experience.
@@ -2583,6 +2582,6 @@ No open-source licence has been chosen yet, so all rights are reserved by the au
 
 <div align="center">
 
-🎓 **PhishGuard is an educational prototype built for a B.Tech mini project. Use its verdicts as guidance, not as a guarantee.**
+🎓 **PhishGuard is an educational prototype built.**
 
 </div>
